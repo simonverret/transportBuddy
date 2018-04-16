@@ -1,0 +1,19 @@
+t      1.0
+tp    -0.3
+tpp    0.2
+tppp   0.
+tz     0.
+
+muMin -1.5
+muMax  0.5
+nMu   200
+
+Tmin   0.001
+Tmax   0.030
+nT    30
+
+ETA    0.02
+nK   801
+nKz	   1
+nOmega 11
+amplitudeCutoff 0.005
