@@ -116,47 +116,52 @@ int main(int argc, const char * argv[]) {
     //// COMPUTING
     
     printf("transportBuddy starting\n\n");
-    
-    
     FILE *fileOut = fopen("transport_vs_T.dat","w");
     
     
-    //// FOR A GIVEN TEMPERATURE
-    double omega[nT][nOmega];
-    double energyCutoff[nT];
-    double dfermiDirac_dw[nT][nOmega];
-    double dfermiDirac_dT[nT][nOmega];
+    //// PRE-CALCULATE TEMPERATURE VARIABLES
+    double T[nT]; double beta[nT]; double omega[nT][nOmega];
+    double energyCutoff[nT]; double dfermiDirac_dw[nT][nOmega]; double dfermiDirac_dT[nT][nOmega];
     
-    printf("%d \n",logT);
-    int nn=0; for(nn=0; nn<nT; nn++)
-    {
-        double T = Tmin;
+    int nn=0; for(nn=0; nn<nT; nn++) {
+        T[nn] = Tmin;
         if (Tmin != Tmax) {
-            if(logT==1) T *= exp(nn*log(Tmax/Tmin)/(nT-1));
-            else T += nn*(Tmax-Tmin)/(nT-1);
+            if(logT==1) T[nn] *= exp(nn*log(Tmax/Tmin)/(nT-1));
+            else T[nn] += nn*(Tmax-Tmin)/(nT-1);
         }
-        printf("%f ",T);
-        double beta = 1./T;
-        energyCutoff[nn] = 2.*2.*acosh(0.25*sqrt(beta/amplitudeCutoff)) /beta;
+        beta[nn] = 1./T[nn];
         
+        energyCutoff[nn] = 2.*2.*acosh(0.25*sqrt(beta[nn]/amplitudeCutoff)) /beta[nn];
         int n=0; for(n=0; n<nOmega; n++)
         {
             omega[nn][n]= -energyCutoff[nn] + 2.*energyCutoff[nn]*n/(nOmega-1);
-            double expBw = exp(beta*omega[nn][n]);
-            dfermiDirac_dw[nn][n]= -beta*expBw/((expBw+1.)*(expBw+1.));
-            dfermiDirac_dT[nn][n]= -beta*omega[nn][n] * dfermiDirac_dw[nn][n];
+            double expBw = exp(beta[nn]*omega[nn][n]);
+            dfermiDirac_dw[nn][n]= -beta[nn]*expBw/((expBw+1.)*(expBw+1.));
+            dfermiDirac_dT[nn][n]= -beta[nn]*omega[nn][n] * dfermiDirac_dw[nn][n];
         }
     }
     
+    //// PRE-CALCULATE SINES AND COSINES
+    double sink[nK]; double sin2k[nK];  double sink_2[nK];
+    double cosk[nK]; double cos2k[nK];  double cosk_2[nK];
+    int ii=0; for(ii=0; ii<nK; ii++){
+        double k = M_PI*(ii*1.0/nK);
+        sink[ii] = sin(k); sin2k[ii] = sin(2.*k); sink_2[ii] = sin(k/2.);
+        cosk[ii] = cos(k); cos2k[ii] = cos(2.*k); cosk_2[ii] = cos(k/2.);
+    }
+    double coskz[nKz]; double coskz_2[nKz]; double sinkz_2[nKz];
+    int kk=0; for(kk=0; kk<nKz; kk++){
+        double kz = M_PI*(kk*2.0/(nKz)); // 0 to 2Pi assumes parity (period of Markie is 4Pi)
+        coskz[kk] = cos(kz); coskz_2[kk] = cos(kz/2.); sinkz_2[kk] = sin(kz/2.);
+    }
     
-    //// ZERO TEMPERATURE RESULTS RECORDER
+    
+    //// RESULTS RECORDER
     double dos[nMu];
     double density0[nMu];
     double sigmaxx0[nMu];
     double sigmazz0[nMu];
     double sigmaxy0[nMu];
-    
-    //// TEMPERATURE DEPENDANT RESULTS RECORDER
     double Cv[nMu][nT];
     double density[nMu][nT];
     double sigma_xx[nMu][nT];
@@ -199,99 +204,67 @@ int main(int argc, const char * argv[]) {
         }
         
         //// INTEGRAL ON k
-        for(int ii=0; ii<nK; ii++)
-        {
-            
-            
+        for(int ii=0; ii<nK; ii++) {
             printf("muu= %i / %i, k = %i / %i \n",iMu,nMu,ii,nK);//fflush(stdout);
             
-            double kx = M_PI*(-1.0 + ii*2.0/(nK));
-            
-            double coskx   = cos(kx);
-            double cos2kx  = cos(2.*kx);
-            double coskx_2 = cos(kx/2.);
-            double sinkx   = sin(kx);
-            double sin2kx  = sin(2.*kx);
-            double sinkx_2 = sin(kx/2.);
-            
-            
-            for(int jj=0; jj<nK; jj++)
-            {
-                double ky = M_PI*(-1.0 + jj*2.0/(nK));
-                
-                double cosky   = cos(ky);
-                double cos2ky  = cos(2.*ky);
-                double cosky_2 = cos(ky/2.);
-                double sinky   = sin(ky);
-                double sin2ky  = sin(2.*ky);
-                double sinky_2 = sin(ky/2.);
+            for(int jj=0; jj<nK; jj++) {
                 
                 double epsilon_k   = -mu;
-                epsilon_k         += -2.*t    * (coskx + cosky);
-                epsilon_k         += -4.*tp   *  coskx*cosky;
-                epsilon_k         += -2.*tpp  * (cos2kx + cos2ky);
-                epsilon_k         += -4.*tppp * (cos2kx*cosky + coskx*cos2ky);
+                epsilon_k         += -2.*t    * (cosk[ii] + cosk[jj]);
+                epsilon_k         += -4.*tp   *  cosk[ii]*cosk[jj];
+                epsilon_k         += -2.*tpp  * (cos2k[ii] + cos2k[jj]);
+                epsilon_k         += -4.*tppp * (cos2k[ii]*cosk[jj] + cosk[ii]*cos2k[jj]);
                 double depsilon_dkx = 0;
-                depsilon_dkx      +=  2.*t    *  sinkx;
-                depsilon_dkx      +=  4.*tp   *  sinkx*cosky;
-                depsilon_dkx      +=  4.*tpp  *  sin2kx;
-                depsilon_dkx      +=     tppp * (8.*sin2kx*cosky + 4.*sinkx*cos2ky);
+                depsilon_dkx      +=  2.*t    *  sink[ii];
+                depsilon_dkx      +=  4.*tp   *  sink[ii]*cosk[jj];
+                depsilon_dkx      +=  4.*tpp  *  sin2k[ii];
+                depsilon_dkx      +=     tppp * (8.*sin2k[ii]*cosk[jj] + 4.*sink[ii]*cos2k[jj]);
                 double depsilon_dky = 0;
-                depsilon_dky      +=  2.*t    *  sinky;
-                depsilon_dky      +=  4.*tp   *  sinky*coskx;
-                depsilon_dky      +=  4.*tpp  *  sin2ky;
-                depsilon_dky      +=     tppp * (8.*sin2ky*coskx + 4.*sinky*cos2kx);
+                depsilon_dky      +=  2.*t    *  sink[jj];
+                depsilon_dky      +=  4.*tp   *  sink[jj]*cosk[ii];
+                depsilon_dky      +=  4.*tpp  *  sin2k[jj];
+                depsilon_dky      +=     tppp * (8.*sin2k[jj]*cosk[ii] + 4.*sink[jj]*cos2k[ii]);
                 double depsilon_dkx_dky = 0;
-                depsilon_dkx_dky  += -4.*tp   *  sinkx*sinky;
-                depsilon_dkx_dky  += -8.*tppp * (sin2kx*sinky + sinkx*sin2ky);
+                depsilon_dkx_dky  += -4.*tp   *  sink[ii]*sink[jj];
+                depsilon_dkx_dky  += -8.*tppp * (sin2k[ii]*sink[jj] + sink[ii]*sin2k[jj]);
                 double depsilon_dky_dky = 0;
-                depsilon_dky_dky  +=  2.*t    *  cosky;
-                depsilon_dky_dky  +=  4.*tp   *  cosky*coskx;
-                depsilon_dky_dky  +=  8.*tpp  *  cos2ky;
-                depsilon_dky_dky  +=     tppp * (16.*cos2ky*coskx + 8.*cosky*cos2kx);
+                depsilon_dky_dky  +=  2.*t    *  cosk[jj];
+                depsilon_dky_dky  +=  4.*tp   *  cosk[jj]*cosk[ii];
+                depsilon_dky_dky  +=  8.*tpp  *  cos2k[jj];
+                depsilon_dky_dky  +=     tppp * (16.*cos2k[jj]*cosk[ii] + 8.*cosk[jj]*cos2k[ii]);
                 
                 
-                for(int kk=0; kk<nKz; kk++)
-                {
+                for(int kk=0; kk<nKz; kk++) {
                     
-                    double kz = M_PI*(kk*2.0/(nKz)); // 0 to 2Pi assumes parity (period of Markie is 4Pi)
-                    
-                    double coskz   = cos(kz);
-                    //double cos2kz  = cos(2.*kz);
-                    double coskz_2 = cos(kz/2.);
-                    //double sinkz   = sin(kz);
-                    //double sin2kz  = sin(2.*kz);
-                    double sinkz_2 = sin(kz/2.);
-                    
-                    double epsilonz_k         = -2.*tz*coskz;
+                    double epsilonz_k         = -2.*tz*coskz[kk];
                     double depsilonz_dkx      =  0.;
                     double depsilonz_dky      =  0.;
                     double depsilonz_dkx_dky  =  0.;
                     double depsilonz_dky_dky  =  0.;
-                    double depsilonz_dkz      =  2.*tz*sinkx;
+                    double depsilonz_dkz      =  2.*tz*sink[ii];
                     if (markiewicz) {
-                        epsilonz_k             = -2.*tz*coskz_2;
-                            epsilonz_k        *=  (coskx-cosky)*(coskx-cosky);
-                            epsilonz_k        *=   coskx_2*cosky_2;
-                        depsilonz_dkx          = -2.*tz*coskz_2;
-                            depsilonz_dkx     *= -2*(coskx-cosky)*sinkx*coskx_2*cosky_2;
-                            depsilonz_dkx     *=    (coskx-cosky)*(coskx-cosky)*sinkx_2*cosky_2 /2.;
-                        depsilonz_dky          = -2*(coskx-cosky)*sinky*coskx_2*cosky_2;
-                            depsilonz_dky     *=    (coskx-cosky)*(coskx-cosky)*coskx_2*sinky_2 /2.;
-                        depsilonz_dkx_dky      = -2.*tz*coskz_2;
-                            depsilonz_dkx_dky *=-2*(coskx+sinky)*sinkx*coskx_2*cosky_2;
-                            depsilonz_dkx_dky *=  2*(coskx-cosky)*sinkx*coskx_2*sinky_2 /2.;
-                            depsilonz_dkx_dky *= -2*(coskx-cosky)*sinky*sinkx_2*cosky_2 /2.;
-                            depsilonz_dkx_dky *=   -(coskx-cosky)*(coskx-cosky)*sinkx_2*sinky_2 /4.;
-                        depsilonz_dky_dky      = -2.*tz*coskz_2;
-                            depsilonz_dky_dky *= -2*(coskx+sinky)*sinky*coskx_2*cosky_2;
-                            depsilonz_dky_dky *= -2*(coskx-cosky)*cosky*coskx_2*cosky_2;
-                            depsilonz_dky_dky *=  2*(coskx-cosky)*sinky*coskx_2*sinky_2 /2.;
-                            depsilonz_dky_dky *= -2*(coskx-cosky)*sinky*coskx_2*sinky_2 /2.;
-                            depsilonz_dky_dky *=    (coskx-cosky)*(coskx-cosky)*coskx_2*cosky_2 /4.;
-                        depsilonz_dkz          = -2.*tz*sinkz_2;
-                            depsilonz_dkz     *=  (coskx-cosky)*(coskx-cosky);
-                            depsilonz_dkz     *=   coskx_2*cosky_2;
+                        epsilonz_k             = -2.*tz*coskz_2[kk];
+                            epsilonz_k        *=  (cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj]);
+                            epsilonz_k        *=   cosk_2[ii]*cosk_2[jj];
+                        depsilonz_dkx          = -2.*tz*coskz_2[kk];
+                            depsilonz_dkx     *= -2*(cosk[ii]-cosk[jj])*sink[ii]*cosk_2[ii]*cosk_2[jj];
+                            depsilonz_dkx     *=    (cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*sink_2[ii]*cosk_2[jj] /2.;
+                        depsilonz_dky          = -2*(cosk[ii]-cosk[jj])*sink[jj]*cosk_2[ii]*cosk_2[jj];
+                            depsilonz_dky     *=    (cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*cosk_2[ii]*sink_2[jj] /2.;
+                        depsilonz_dkx_dky      = -2.*tz*coskz_2[kk];
+                            depsilonz_dkx_dky *=-2*(cosk[ii]+sink[jj])*sink[ii]*cosk_2[ii]*cosk_2[jj];
+                            depsilonz_dkx_dky *=  2*(cosk[ii]-cosk[jj])*sink[ii]*cosk_2[ii]*sink_2[jj] /2.;
+                            depsilonz_dkx_dky *= -2*(cosk[ii]-cosk[jj])*sink[jj]*sink_2[ii]*cosk_2[jj] /2.;
+                            depsilonz_dkx_dky *=   -(cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*sink_2[ii]*sink_2[jj] /4.;
+                        depsilonz_dky_dky      = -2.*tz*coskz_2[kk];
+                            depsilonz_dky_dky *= -2*(cosk[ii]+sink[jj])*sink[jj]*cosk_2[ii]*cosk_2[jj];
+                            depsilonz_dky_dky *= -2*(cosk[ii]-cosk[jj])*cosk[jj]*cosk_2[ii]*cosk_2[jj];
+                            depsilonz_dky_dky *=  2*(cosk[ii]-cosk[jj])*sink[jj]*cosk_2[ii]*sink_2[jj] /2.;
+                            depsilonz_dky_dky *= -2*(cosk[ii]-cosk[jj])*sink[jj]*cosk_2[ii]*sink_2[jj] /2.;
+                            depsilonz_dky_dky *=    (cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*cosk_2[ii]*cosk_2[jj] /4.;
+                        depsilonz_dkz          = -2.*tz*sinkz_2[kk];
+                            depsilonz_dkz     *=  (cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj]);
+                            depsilonz_dkz     *=   cosk_2[ii]*cosk_2[jj];
                     }
 
                     double ep_k        =  epsilon_k   +  epsilonz_k;
@@ -308,29 +281,21 @@ int main(int argc, const char * argv[]) {
                     double Ak0   = -(1./M_PI)*cimag(1.0/ (I*Gamma - ep_k));
                     double kernel_xx = dep_dkx*dep_dkx;
                     double kernel_zz = dep_dkz*dep_dkz;
-                    double kernel_xy = -(2./3.)*(dep_dkx*(dep_dkx*dep_dky_dky - dep_dky*dep_dkx_dky));
+                    double kernel_xy = -(2./3.)*(dep_dkx * (dep_dkx * dep_dky_dky - dep_dky * dep_dkx_dky));
                     
                     
                     dos[iMu]      += Ak0;
                     density0[iMu] += 1.0/(1.0+exp(1000*ep_k));
-                    sigmaxx0[iMu] += kernel_xx*Ak0*Ak0;
-                    sigmaxy0[iMu] += kernel_xy*Ak0*Ak0*Ak0;
-                    sigmazz0[iMu] += kernel_zz*Ak0*Ak0;
+                    sigmaxx0[iMu] += kernel_xx * Ak0*Ak0;
+                    sigmaxy0[iMu] += kernel_xy * Ak0*Ak0*Ak0;
+                    sigmazz0[iMu] += kernel_zz * Ak0*Ak0;
                     
                     
                     //// LOOP ON TEMPERATURES
                     
                     int nn=0; for(nn=0; nn<nT; nn++)
                     {
-                        double T = Tmin;
-                        if (Tmin != Tmax) {
-                            if(logT==1) T *= exp(nn*log(Tmax/Tmin)/(nT-1));
-                            else T += nn*(Tmax-Tmin)/(nT-1);
-                        }
-                        double beta = 1./T;
-                        
-                        
-                        density[iMu][nn]    += 1.0/(1.0+exp(beta*ep_k));
+                        density[iMu][nn]    += 1.0/(1.0+exp(beta[nn]*ep_k));
 
                         //// INTEGRAL IN ENERGY
                         int n=0; for(n=0; n<nOmega; n++)
@@ -344,13 +309,16 @@ int main(int argc, const char * argv[]) {
                             double frequencyKernel_xx = -dfermiDirac_dw[nn][n]*kernel_xx*A_k*A_k;
                             double frequencyKernel_zz = -dfermiDirac_dw[nn][n]*kernel_zz*A_k*A_k;
                             double frequencyKernel_xy = -dfermiDirac_dw[nn][n]*kernel_xy*A_k*A_k*A_k;
+                            
                             sigma_xx[iMu][nn] += frequencyKernel_xx;
                             sigma_zz[iMu][nn] += frequencyKernel_zz;
                             sigma_xy[iMu][nn] += frequencyKernel_xy;
-                            alpha_xx[iMu][nn] += beta*omega[nn][n] * frequencyKernel_xx;
-                            alpha_zz[iMu][nn] += beta*omega[nn][n] * frequencyKernel_zz;
-                            alpha_xy[iMu][nn] += beta*omega[nn][n] * frequencyKernel_xy;
-                            double omega2 = beta*beta* omega[nn][n] * omega[nn][n];
+                            alpha_xx[iMu][nn] += beta[nn]*omega[nn][n] * frequencyKernel_xx;
+                            alpha_zz[iMu][nn] += beta[nn]*omega[nn][n] * frequencyKernel_zz;
+                            alpha_xy[iMu][nn] += beta[nn]*omega[nn][n] * frequencyKernel_xy;
+                            
+                            double omega2 = beta[nn]*beta[nn]* omega[nn][n] * omega[nn][n];
+                            
                             beta_xx[iMu][nn]  += omega2 * frequencyKernel_xx;
                             beta_zz[iMu][nn]  += omega2 * frequencyKernel_zz;
                             beta_xy[iMu][nn] += omega2 * frequencyKernel_xy;
@@ -379,19 +347,12 @@ int main(int argc, const char * argv[]) {
         //// LOOP ON TEMPERATURES
         nn=0; for(nn=0; nn<nT; nn++)
         {
-            double T = Tmin;
-            if (Tmin != Tmax) {
-                if(logT==1) T *= exp(nn*log(Tmax/Tmin)/(nT-1));
-                else T += nn*(Tmax-Tmin)/(nT-1);
-            }
-            double beta = 1./T;
-            
             double f = (2.*energyCutoff[nn]) /(nOmega)*f0;
             
             fprintf(fileOut,"% 13f % 13f % 13f ", mu, 1.0-f0*density0[iMu], f0*dos[iMu]);
             fprintf(fileOut,"% 13f % 13f % 13f ", f0*sigmaxx0[iMu], f0*sigmaxy0[iMu], f0*sigmazz0[iMu]);
             
-            fprintf(fileOut,"% 13f % 13f % 13f ", 1/beta, 1.0-f0*density[iMu][nn], f*Cv[iMu][nn]);
+            fprintf(fileOut,"% 13f % 13f % 13f ", T[nn], 1.0-f0*density[iMu][nn], f*Cv[iMu][nn]);
             fprintf(fileOut,"% 13f % 13f % 13f ", f*sigma_xx[iMu][nn], f*sigma_xy[iMu][nn], f*sigma_zz[iMu][nn] );
             fprintf(fileOut,"% 13f % 13f % 13f ", f*alpha_xx[iMu][nn], f*alpha_xy[iMu][nn], f*alpha_zz[iMu][nn] );
             fprintf(fileOut,"% 13f % 13f % 13f ", f*beta_xx[iMu][nn],  f*beta_xy[iMu][nn],  f*beta_zz[iMu][nn] );
@@ -412,12 +373,6 @@ int main(int argc, const char * argv[]) {
     
     nn=0; for(nn=0; nn<nT; nn++)
     {
-        double T = Tmin;
-        if (Tmin != Tmax) {
-            if(logT==1) T *= exp(nn*log(Tmax/Tmin)/(nT-1));
-            else T += nn*(Tmax-Tmin)/(nT-1);
-        }
-        double beta = 1./T;
         
         double f0 = 2.0/nK/nK/nKz;
         double f = (2.*energyCutoff[nn])/(nOmega)*f0;
@@ -437,7 +392,7 @@ int main(int argc, const char * argv[]) {
             fprintf(fileOutMu,"% 13f % 13f % 13f ", mu, 1.0-f0*density0[iMu], f0*dos[iMu]);
             fprintf(fileOutMu,"% 13f % 13f % 13f ", f0*sigmaxx0[iMu], f0*sigmaxy0[iMu], f0*sigmazz0[iMu]);
             
-            fprintf(fileOutMu,"% 13f % 13f % 13f ", 1/beta, 1.0-f0*density[iMu][nn], f*Cv[iMu][nn]);
+            fprintf(fileOutMu,"% 13f % 13f % 13f ", T[nn], 1.0-f0*density[iMu][nn], f*Cv[iMu][nn]);
             fprintf(fileOutMu,"% 13f % 13f % 13f ", f*sigma_xx[iMu][nn], f*sigma_xy[iMu][nn], f*sigma_zz[iMu][nn] );
             fprintf(fileOutMu,"% 13f % 13f % 13f ", f*alpha_xx[iMu][nn], f*alpha_xy[iMu][nn], f*alpha_zz[iMu][nn] );
             fprintf(fileOutMu,"% 13f % 13f % 13f ", f*beta_xx[iMu][nn],  f*beta_xy[iMu][nn],  f*beta_zz[iMu][nn] );

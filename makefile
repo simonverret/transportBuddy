@@ -1,8 +1,8 @@
 OPTIONS = -O2 -Wall
 EXEC = tbd
 INSTALLDIR := $(HOME)/bin/
-COMPILER = gcc
-#COMPILER = /Users/Simon/codes/faster_clang
+#COMPILER = gcc
+COMPILER = /Users/Simon/codes/faster_clang
 
 all: executable
 executable: transportBuddy.c
