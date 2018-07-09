@@ -73,7 +73,12 @@ int main(int argc, const char * argv[]) {
     double tppp;
     double tz;
     
-    double ETA;
+    double ETA=0.00001;
+    double ETAell=0.0;
+    double ETAdos=0.0;
+    double ETAaFL=0.0;
+    double ETAbFL=0.0;
+    double ETAaPL=0.0;
     int nOmega;
     int nK;
     int nKz;
@@ -99,6 +104,11 @@ int main(int argc, const char * argv[]) {
     readDouble(file, "Tmin",            &Tmin);
     readDouble(file, "Tmax",            &Tmax);
     readDouble(file, "ETA",             &ETA);
+    readDouble(file, "ETAell",          &ETAell);
+    readDouble(file, "ETAdos",          &ETAdos);
+    readDouble(file, "ETAaFL",          &ETAaFL);
+    readDouble(file, "ETAbFL",          &ETAbFL);
+    readDouble(file, "ETAaPL",          &ETAaPL);
     readDouble(file, "amplitudeCutoff", &amplitudeCutoff);
     
     readInt(file, "nMu",    &nMu);
@@ -130,7 +140,7 @@ int main(int argc, const char * argv[]) {
             else T[nn] += nn*(Tmax-Tmin)/(nT-1);
         }
         beta[nn] = 1./T[nn];
-        
+
         energyCutoff[nn] = 2.*2.*acosh(0.25*sqrt(beta[nn]/amplitudeCutoff)) /beta[nn];
         int n=0; for(n=0; n<nOmega; n++)
         {
@@ -162,6 +172,9 @@ int main(int argc, const char * argv[]) {
     double sigmaxx0[nMu];
     double sigmazz0[nMu];
     double sigmaxy0[nMu];
+    double aver_Vk0[nMu];
+    double max_Vk0[nMu];
+    double min_Vk0[nMu];
     double Cv[nMu][nT];
     double density[nMu][nT];
     double sigma_xx[nMu][nT];
@@ -174,11 +187,9 @@ int main(int argc, const char * argv[]) {
     double beta_zz[nMu][nT];
     double beta_xy[nMu][nT];
     
-    
     //// LOOP ON mu
     for(int iMu=0; iMu<nMu; iMu++)
     {
-        
         double mu = muMin;
         if (muMin!=muMax) mu += iMu*(muMax-muMin)/(nMu-1);
         
@@ -188,6 +199,9 @@ int main(int argc, const char * argv[]) {
         sigmaxx0[iMu] = 0.;
         sigmazz0[iMu] = 0.;
         sigmaxy0[iMu] = 0.;
+        aver_Vk0[iMu]=0.;
+        max_Vk0[iMu]=0.;
+        min_Vk0[iMu]=1000.;
         int nn=0; for(nn=0; nn<nT; nn++)
         {
             Cv[iMu][nn]=0.;
@@ -274,10 +288,15 @@ int main(int argc, const char * argv[]) {
                     double dep_dkx_dky = depsilon_dkx_dky + depsilonz_dkx_dky;
                     double dep_dky_dky = depsilon_dky_dky + depsilonz_dky_dky;
                     
+
+                    double Gamma = ETA;
+                    double normV_k = sqrt(dep_dkx*dep_dkx + dep_dky*dep_dky + dep_dkz*dep_dkz);
                     
-                    
-                    double Gamma = ETA;  /// COULD BE MEAN-FREE PATH HERE
-                    
+                    Gamma += ETAell*normV_k;
+                    Gamma += ETAdos/normV_k;
+                    // double Gamma = ETA + //// Fermi Liquid 
+
+                    //// A
                     double Ak0   = -(1./M_PI)*cimag(1.0/ (I*Gamma - ep_k));
                     double kernel_xx = dep_dkx*dep_dkx;
                     double kernel_zz = dep_dkz*dep_dkz;
@@ -290,21 +309,37 @@ int main(int argc, const char * argv[]) {
                     sigmaxy0[iMu] += kernel_xy * Ak0*Ak0*Ak0;
                     sigmazz0[iMu] += kernel_zz * Ak0*Ak0;
                     
+                    double norm2dV_k = sqrt( dep_dkx*dep_dkx + dep_dky*dep_dky );
+                    aver_Vk0[iMu] += norm2dV_k * Ak0;
+
+                    if (ep_k*ep_k < 1e-5) {
+                        if (norm2dV_k > max_Vk0[iMu]) {
+                        max_Vk0[iMu] = norm2dV_k;
+                        }
+                        if (norm2dV_k < min_Vk0[iMu]) {
+                        min_Vk0[iMu] = norm2dV_k;
+                        }
+                    }
+                    
                     
                     //// LOOP ON TEMPERATURES
                     
                     int nn=0; for(nn=0; nn<nT; nn++)
                     {
                         density[iMu][nn]    += 1.0/(1.0+exp(beta[nn]*ep_k));
+                        
+                        Gamma += ETAbFL*T[nn]*T[nn];
 
                         //// INTEGRAL IN ENERGY
                         int n=0; for(n=0; n<nOmega; n++)
                         {
-                            double complex z = omega[nn][n] + ETA * I;
+                            Gamma += ETAaFL*omega[nn][n]*omega[nn][n];
+                            
+                            double complex z = omega[nn][n] + Gamma * I;
                             double A_k = -(1./M_PI)*cimag(1.0/ (z-ep_k) );
 
                             double CvKernel = omega[nn][n]*dfermiDirac_dT[nn][n]*A_k;
-                            Cv[iMu][nn]         += CvKernel;
+                            Cv[iMu][nn]       += CvKernel;
 
                             double frequencyKernel_xx = -dfermiDirac_dw[nn][n]*kernel_xx*A_k*A_k;
                             double frequencyKernel_zz = -dfermiDirac_dw[nn][n]*kernel_zz*A_k*A_k;
@@ -313,15 +348,14 @@ int main(int argc, const char * argv[]) {
                             sigma_xx[iMu][nn] += frequencyKernel_xx;
                             sigma_zz[iMu][nn] += frequencyKernel_zz;
                             sigma_xy[iMu][nn] += frequencyKernel_xy;
-                            alpha_xx[iMu][nn] += beta[nn]*omega[nn][n] * frequencyKernel_xx;
-                            alpha_zz[iMu][nn] += beta[nn]*omega[nn][n] * frequencyKernel_zz;
-                            alpha_xy[iMu][nn] += beta[nn]*omega[nn][n] * frequencyKernel_xy;
-                            
-                            double omega2 = beta[nn]*beta[nn]* omega[nn][n] * omega[nn][n];
-                            
-                            beta_xx[iMu][nn]  += omega2 * frequencyKernel_xx;
-                            beta_zz[iMu][nn]  += omega2 * frequencyKernel_zz;
-                            beta_xy[iMu][nn] += omega2 * frequencyKernel_xy;
+                            double betaOmega = beta[nn]*omega[nn][n];
+                            alpha_xx[iMu][nn] += betaOmega * frequencyKernel_xx;
+                            alpha_zz[iMu][nn] += betaOmega * frequencyKernel_zz;
+                            alpha_xy[iMu][nn] += betaOmega * frequencyKernel_xy;
+                            double betaOmega2 = beta[nn]*beta[nn] * omega[nn][n]*omega[nn][n];
+                            beta_xx[iMu][nn]  += betaOmega2 * frequencyKernel_xx;
+                            beta_zz[iMu][nn]  += betaOmega2 * frequencyKernel_zz;
+                            beta_xy[iMu][nn]  += betaOmega2 * frequencyKernel_xy;
                         }
                     }
                 }
@@ -334,10 +368,10 @@ int main(int argc, const char * argv[]) {
         printf("\n");
         fflush(stdout);
         
-        
-        
+
         //// FILE GROUPED BY T
         fprintf(fileOut, "           mu            p0           dos ");
+        fprintf(fileOut, "     averageV          minV          maxV ");
         fprintf(fileOut, "     sigmaxx0      sigmaxy0      sigmazz0 ");
         fprintf(fileOut, "            T             p            Cv ");
         fprintf(fileOut, "      sigmaxx       sigmaxy       sigmazz ");
@@ -350,6 +384,7 @@ int main(int argc, const char * argv[]) {
             double f = (2.*energyCutoff[nn]) /(nOmega)*f0;
             
             fprintf(fileOut,"% 13f % 13f % 13f ", mu, 1.0-f0*density0[iMu], f0*dos[iMu]);
+            fprintf(fileOut,"% 13f % 13f % 13f ", aver_Vk0[iMu]/dos[iMu], min_Vk0[iMu], max_Vk0[iMu]);
             fprintf(fileOut,"% 13f % 13f % 13f ", f0*sigmaxx0[iMu], f0*sigmaxy0[iMu], f0*sigmazz0[iMu]);
             
             fprintf(fileOut,"% 13f % 13f % 13f ", T[nn], 1.0-f0*density[iMu][nn], f*Cv[iMu][nn]);
@@ -366,8 +401,8 @@ int main(int argc, const char * argv[]) {
     fclose(fileOut);
     
     
-    
-    
+
+
     //// FILE GROUPED BY mu
     FILE *fileOutMu = fopen("transport_vs_mu.dat","w");
     
@@ -379,6 +414,7 @@ int main(int argc, const char * argv[]) {
         
         
         fprintf(fileOutMu, "           mu            p0           dos ");
+        fprintf(fileOutMu, "     averageV          maxV          minV ");
         fprintf(fileOutMu, "     sigmaxx0      sigmaxy0      sigmazz0 ");
         fprintf(fileOutMu, "            T             p            Cv ");
         fprintf(fileOutMu, "      sigmaxx       sigmaxy       sigmazz ");
@@ -390,8 +426,8 @@ int main(int argc, const char * argv[]) {
             double mu = muMin + iMu*(muMax-muMin)/(nMu-1);
         
             fprintf(fileOutMu,"% 13f % 13f % 13f ", mu, 1.0-f0*density0[iMu], f0*dos[iMu]);
+            fprintf(fileOutMu,"% 13f % 13f % 13f ", aver_Vk0[iMu]/dos[iMu], min_Vk0[iMu], max_Vk0[iMu]);
             fprintf(fileOutMu,"% 13f % 13f % 13f ", f0*sigmaxx0[iMu], f0*sigmaxy0[iMu], f0*sigmazz0[iMu]);
-            
             fprintf(fileOutMu,"% 13f % 13f % 13f ", T[nn], 1.0-f0*density[iMu][nn], f*Cv[iMu][nn]);
             fprintf(fileOutMu,"% 13f % 13f % 13f ", f*sigma_xx[iMu][nn], f*sigma_xy[iMu][nn], f*sigma_zz[iMu][nn] );
             fprintf(fileOutMu,"% 13f % 13f % 13f ", f*alpha_xx[iMu][nn], f*alpha_xy[iMu][nn], f*alpha_zz[iMu][nn] );
