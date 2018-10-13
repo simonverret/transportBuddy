@@ -293,9 +293,8 @@ int main(int argc, const char * argv[]) {
                     double normV_k = sqrt(dep_dkx*dep_dkx + dep_dky*dep_dky + dep_dkz*dep_dkz);
                     
                     Gamma += ETAell*normV_k;
-                    Gamma += ETAdos/normV_k;
-                    // double Gamma = ETA + //// Fermi Liquid 
-
+                    Gamma += ETAdos/(normV_k+10e-10);
+                    
                     //// A
                     double Ak0   = -(1./M_PI)*cimag(1.0/ (I*Gamma - ep_k));
                     double kernel_xx = dep_dkx*dep_dkx;
@@ -328,14 +327,14 @@ int main(int argc, const char * argv[]) {
                     {
                         density[iMu][nn]    += 1.0/(1.0+exp(beta[nn]*ep_k));
                         
-                        Gamma += ETAbFL*T[nn]*T[nn];
+                        double GammaT = Gamma + ETAbFL*T[nn]*T[nn];
 
                         //// INTEGRAL IN ENERGY
                         int n=0; for(n=0; n<nOmega; n++)
                         {
-                            Gamma += ETAaFL*omega[nn][n]*omega[nn][n];
+                            double GammaOmega = GammaT+ETAaFL*omega[nn][n]*omega[nn][n];
                             
-                            double complex z = omega[nn][n] + Gamma * I;
+                            double complex z = omega[nn][n] + GammaOmega * I;
                             double A_k = -(1./M_PI)*cimag(1.0/ (z-ep_k) );
 
                             double CvKernel = omega[nn][n]*dfermiDirac_dT[nn][n]*A_k;
