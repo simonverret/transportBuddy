@@ -1,6 +1,6 @@
 //
 //  main.cpp
-//  transportBody3D
+//  transportBuddy for 3D cuprates
 //  by Simon Verret, Universite de Sherbrooke
 //
 //  code partially adapted from afmCond.c
@@ -55,6 +55,11 @@ void readInt(FILE * file, char * name,  int * value) {
     exit(1);
 }
 
+void removeSubstring(char *s,const char *toremove)
+{
+  while( s == strstr(s,toremove) )
+    memmove(s,s+strlen(toremove),1+strlen(s+strlen(toremove)));
+}
 
 
 
@@ -89,9 +94,16 @@ int main(int argc, const char * argv[]) {
     
     
     //// SETTING PARAMETERS
-    FILE * file = fopen("model.dat", "rt");
-    if(file == NULL) {printf("file %s not found", "model.dat"); exit(1);}
-    printf("reading parameters from model.dat\n\n") ;
+    
+    
+    char model[800] = "";
+    if (argc >= 2) { strcpy(model,argv[1]);}
+    else { strcpy(model,"model.dat");}
+    FILE * file = fopen(model,"rt");
+    if(file == NULL) {printf("file %s not found", model); exit(1);}
+    printf("reading parameters from %s\n", model) ;
+
+    removeSubstring(model,"model");
     
     readDouble(file, "t",               &t);
     readDouble(file, "tp",              &tp);
@@ -125,9 +137,13 @@ int main(int argc, const char * argv[]) {
     
     //// COMPUTING
     
+
     printf("transportBuddy starting\n\n");
-    FILE *fileOut = fopen("transport_vs_T.dat","w");
     
+
+    char nameFileT[800] = "transport_vs_T";
+    strcat(nameFileT, model);
+    FILE *fileOut = fopen(nameFileT,"w");
     
     //// PRE-CALCULATE TEMPERATURE VARIABLES
     double T[nT]; double beta[nT]; double omega[nT][nOmega];
@@ -135,7 +151,7 @@ int main(int argc, const char * argv[]) {
     
     int nn=0; for(nn=0; nn<nT; nn++) {
         T[nn] = Tmin;
-        if (Tmin != Tmax) {
+        if ((Tmin != Tmax) && (nT != 1)) {
             if(logT==1) T[nn] *= exp(nn*log(Tmax/Tmin)/(nT-1));
             else T[nn] += nn*(Tmax-Tmin)/(nT-1);
         }
@@ -233,14 +249,14 @@ int main(int argc, const char * argv[]) {
                 depsilon_dkx      +=  4.*tp   *  sink[ii]*cosk[jj];
                 depsilon_dkx      +=  4.*tpp  *  sin2k[ii];
                 depsilon_dkx      +=     tppp * (8.*sin2k[ii]*cosk[jj] + 4.*sink[ii]*cos2k[jj]);
+                double depsilon_dkx_dky = 0;
+                depsilon_dkx_dky  += -4.*tp   *  sink[ii]*sink[jj];
+                depsilon_dkx_dky  += -8.*tppp * (sin2k[ii]*sink[jj] + sink[ii]*sin2k[jj]);
                 double depsilon_dky = 0;
                 depsilon_dky      +=  2.*t    *  sink[jj];
                 depsilon_dky      +=  4.*tp   *  sink[jj]*cosk[ii];
                 depsilon_dky      +=  4.*tpp  *  sin2k[jj];
                 depsilon_dky      +=     tppp * (8.*sin2k[jj]*cosk[ii] + 4.*sink[jj]*cos2k[ii]);
-                double depsilon_dkx_dky = 0;
-                depsilon_dkx_dky  += -4.*tp   *  sink[ii]*sink[jj];
-                depsilon_dkx_dky  += -8.*tppp * (sin2k[ii]*sink[jj] + sink[ii]*sin2k[jj]);
                 double depsilon_dky_dky = 0;
                 depsilon_dky_dky  +=  2.*t    *  cosk[jj];
                 depsilon_dky_dky  +=  4.*tp   *  cosk[jj]*cosk[ii];
@@ -255,40 +271,24 @@ int main(int argc, const char * argv[]) {
                     double depsilonz_dky      =  0.;
                     double depsilonz_dkx_dky  =  0.;
                     double depsilonz_dky_dky  =  0.;
-                    double depsilonz_dkz      =  2.*tz*sink[ii];
-                    if (markiewicz) {
-                        epsilonz_k             = -2.*tz*coskz_2[kk];
-                            epsilonz_k        *=  (cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj]);
-                            epsilonz_k        *=   cosk_2[ii]*cosk_2[jj];
-                        depsilonz_dkx          = -2.*tz*coskz_2[kk];
-                            depsilonz_dkx     *= -2*(cosk[ii]-cosk[jj])*sink[ii]*cosk_2[ii]*cosk_2[jj];
-                            depsilonz_dkx     *=    (cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*sink_2[ii]*cosk_2[jj] /2.;
-                        depsilonz_dky          = -2*(cosk[ii]-cosk[jj])*sink[jj]*cosk_2[ii]*cosk_2[jj];
-                            depsilonz_dky     *=    (cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*cosk_2[ii]*sink_2[jj] /2.;
-                        depsilonz_dkx_dky      = -2.*tz*coskz_2[kk];
-                            depsilonz_dkx_dky *=-2*(cosk[ii]+sink[jj])*sink[ii]*cosk_2[ii]*cosk_2[jj];
-                            depsilonz_dkx_dky *=  2*(cosk[ii]-cosk[jj])*sink[ii]*cosk_2[ii]*sink_2[jj] /2.;
-                            depsilonz_dkx_dky *= -2*(cosk[ii]-cosk[jj])*sink[jj]*sink_2[ii]*cosk_2[jj] /2.;
-                            depsilonz_dkx_dky *=   -(cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*sink_2[ii]*sink_2[jj] /4.;
-                        depsilonz_dky_dky      = -2.*tz*coskz_2[kk];
-                            depsilonz_dky_dky *= -2*(cosk[ii]+sink[jj])*sink[jj]*cosk_2[ii]*cosk_2[jj];
-                            depsilonz_dky_dky *= -2*(cosk[ii]-cosk[jj])*cosk[jj]*cosk_2[ii]*cosk_2[jj];
-                            depsilonz_dky_dky *=  2*(cosk[ii]-cosk[jj])*sink[jj]*cosk_2[ii]*sink_2[jj] /2.;
-                            depsilonz_dky_dky *= -2*(cosk[ii]-cosk[jj])*sink[jj]*cosk_2[ii]*sink_2[jj] /2.;
-                            depsilonz_dky_dky *=    (cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*cosk_2[ii]*cosk_2[jj] /4.;
-                        depsilonz_dkz          = -2.*tz*sinkz_2[kk];
-                            depsilonz_dkz     *=  (cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj]);
-                            depsilonz_dkz     *=   cosk_2[ii]*cosk_2[jj];
+                    double depsilonz_dkz      =  2.*tz*sink[kk];
+                    
+                    if (markiewicz) {      // obtained with mathematica
+                        epsilonz_k         = -2*tz*coskz_2[kk]*(cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*cosk_2[ii]*cosk_2[jj];
+                        depsilonz_dkx      = -tz*cosk_2[jj]*(-4-5*cosk[ii]+cosk[jj])*(-cosk[ii]+cosk[jj])*coskz_2[kk]*sink_2[ii];
+                        depsilonz_dky      = -tz*cosk_2[ii]*(-4+cosk[ii]-5*cosk[jj])*(cosk[ii]-cosk[jj])*coskz_2[kk]*sink_2[jj];
+                        depsilonz_dkx_dky  = -tz*(1/4.)*(6-5*cos2k[ii]+16*cosk[jj]+4*cosk[ii]*(4+9*cosk[jj])-5*cos2k[jj])*coskz_2[kk]*sink_2[ii]*sink_2[jj];
+                        depsilonz_dky_dky  = -tz*(1/4.)*cosk_2[ii]*cosk_2[jj]*(10+16*cosk[ii]+cos2k[ii]-4*(4+9*cosk[ii])*cosk[jj]+25*cos2k[jj])*coskz_2[kk];
+                        depsilonz_dkz      = -tz*cosk_2[ii]*cosk_2[jj]*(cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*sinkz_2[kk];
                     }
 
-                    double ep_k        =  epsilon_k   +  epsilonz_k;
+                    double ep_k        =  epsilon_k   + epsilonz_k;
                     double dep_dkx     = depsilon_dkx + depsilonz_dkx;
                     double dep_dky     = depsilon_dky + depsilonz_dky;
                     double dep_dkz     = depsilonz_dkz;
                     double dep_dkx_dky = depsilon_dkx_dky + depsilonz_dkx_dky;
                     double dep_dky_dky = depsilon_dky_dky + depsilonz_dky_dky;
                     
-
                     double Gamma = ETA;
                     double normV_k = sqrt(dep_dkx*dep_dkx + dep_dky*dep_dky + dep_dkz*dep_dkz);
                     
@@ -403,8 +403,10 @@ int main(int argc, const char * argv[]) {
 
 
     //// FILE GROUPED BY mu
-    FILE *fileOutMu = fopen("transport_vs_mu.dat","w");
-    
+    char nameFileMu[800] = "transport_vs_Mu";
+    strcat(nameFileMu, model);
+    FILE *fileOutMu = fopen(nameFileMu,"w");
+
     nn=0; for(nn=0; nn<nT; nn++)
     {
         
