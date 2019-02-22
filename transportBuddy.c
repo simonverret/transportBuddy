@@ -92,6 +92,7 @@ int main(int argc, const char * argv[]) {
     int logT=0; //bool
     double amplitudeCutoff;
     
+    double etaNorm=0;
     
     //// SETTING PARAMETERS
     
@@ -116,11 +117,17 @@ int main(int argc, const char * argv[]) {
     readDouble(file, "Tmin",            &Tmin);
     readDouble(file, "Tmax",            &Tmax);
     readDouble(file, "ETA",             &ETA);
+    etaNorm=ETA;
     readDouble(file, "ETAell",          &ETAell);
+    if (ETAell>etaNorm) etaNorm=ETAell;
     readDouble(file, "ETAdos",          &ETAdos);
+    if (ETAdos>etaNorm) etaNorm=ETAdos;
     readDouble(file, "ETAaFL",          &ETAaFL);
+    // if (ETAaFL>etaNorm) etaNorm=ETAaFL*Tmin*Tmin;
     readDouble(file, "ETAbFL",          &ETAbFL);
+    // if (ETAbFL>etaNorm) etaNorm=ETAbFL*Tmin*Tmin;
     readDouble(file, "ETAaPL",          &ETAaPL);
+    // if (ETAaPL>etaNorm) etaNorm=ETAaPL;
     readDouble(file, "amplitudeCutoff", &amplitudeCutoff);
     
     readInt(file, "nMu",    &nMu);
@@ -184,13 +191,15 @@ int main(int argc, const char * argv[]) {
     
     //// RESULTS RECORDER
     double dos[nMu];
+    double docxx[nMu];
+    double docxy[nMu];
     double density0[nMu];
     double sigmaxx0[nMu];
     double sigmazz0[nMu];
     double sigmaxy0[nMu];
-    double aver_Vk0[nMu];
-    double max_Vk0[nMu];
-    double min_Vk0[nMu];
+    // double aver_Vk0[nMu];
+    // double max_Vk0[nMu];
+    // double min_Vk0[nMu];
     double Cv[nMu][nT];
     double density[nMu][nT];
     double sigma_xx[nMu][nT];
@@ -211,13 +220,15 @@ int main(int argc, const char * argv[]) {
         
         //// RESULTS
         dos[iMu] = 0.;
+        docxx[iMu] = 0.;
+        docxy[iMu] = 0.;
         density0[iMu] = 0.;
         sigmaxx0[iMu] = 0.;
         sigmazz0[iMu] = 0.;
         sigmaxy0[iMu] = 0.;
-        aver_Vk0[iMu]=0.;
-        max_Vk0[iMu]=0.;
-        min_Vk0[iMu]=1000.;
+        // aver_Vk0[iMu]=0.;
+        // max_Vk0[iMu]=0.;
+        // min_Vk0[iMu]=1000.;
         int nn=0; for(nn=0; nn<nT; nn++)
         {
             Cv[iMu][nn]=0.;
@@ -236,7 +247,6 @@ int main(int argc, const char * argv[]) {
         //// INTEGRAL ON k
         for(int ii=0; ii<nK; ii++) {
             printf("muu= %i / %i, k = %i / %i \n",iMu,nMu,ii,nK);//fflush(stdout);
-            
             for(int jj=0; jj<nK; jj++) {
                 
                 double epsilon_k   = -mu;
@@ -263,7 +273,6 @@ int main(int argc, const char * argv[]) {
                 depsilon_dky_dky  +=  8.*tpp  *  cos2k[jj];
                 depsilon_dky_dky  +=     tppp * (16.*cos2k[jj]*cosk[ii] + 8.*cosk[jj]*cos2k[ii]);
                 
-                
                 for(int kk=0; kk<nKz; kk++) {
                     
                     double epsilonz_k         = -2.*tz*coskz[kk];
@@ -273,13 +282,13 @@ int main(int argc, const char * argv[]) {
                     double depsilonz_dky_dky  =  0.;
                     double depsilonz_dkz      =  2.*tz*sink[kk];
                     
-                    if (markiewicz) {      // obtained with mathematica
+                    if (markiewicz) { // from mathematica (I'm not that crazy)
                         epsilonz_k         = -2*tz*coskz_2[kk]*(cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*cosk_2[ii]*cosk_2[jj];
-                        depsilonz_dkx      = -tz*cosk_2[jj]*(-4-5*cosk[ii]+cosk[jj])*(-cosk[ii]+cosk[jj])*coskz_2[kk]*sink_2[ii];
-                        depsilonz_dky      = -tz*cosk_2[ii]*(-4+cosk[ii]-5*cosk[jj])*(cosk[ii]-cosk[jj])*coskz_2[kk]*sink_2[jj];
-                        depsilonz_dkx_dky  = -tz*(1/4.)*(6-5*cos2k[ii]+16*cosk[jj]+4*cosk[ii]*(4+9*cosk[jj])-5*cos2k[jj])*coskz_2[kk]*sink_2[ii]*sink_2[jj];
-                        depsilonz_dky_dky  = -tz*(1/4.)*cosk_2[ii]*cosk_2[jj]*(10+16*cosk[ii]+cos2k[ii]-4*(4+9*cosk[ii])*cosk[jj]+25*cos2k[jj])*coskz_2[kk];
-                        depsilonz_dkz      = -tz*cosk_2[ii]*cosk_2[jj]*(cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*sinkz_2[kk];
+                        depsilonz_dkx      = tz*cosk_2[jj]*(-4-5*cosk[ii]+cosk[jj])*(-cosk[ii]+cosk[jj])*coskz_2[kk]*sink_2[ii];
+                        depsilonz_dky      = tz*cosk_2[ii]*(-4+cosk[ii]-5*cosk[jj])*(cosk[ii]-cosk[jj])*coskz_2[kk]*sink_2[jj];
+                        depsilonz_dkx_dky  = tz*(1/4.)*(6-5*cos2k[ii]+16*cosk[jj]+4*cosk[ii]*(4+9*cosk[jj])-5*cos2k[jj])*coskz_2[kk]*sink_2[ii]*sink_2[jj];
+                        depsilonz_dky_dky  = tz*(1/4.)*cosk_2[ii]*cosk_2[jj]*(10+16*cosk[ii]+cos2k[ii]-4*(4+9*cosk[ii])*cosk[jj]+25*cos2k[jj])*coskz_2[kk];
+                        depsilonz_dkz      = tz*cosk_2[ii]*cosk_2[jj]*(cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*sinkz_2[kk];
                     }
 
                     double ep_k        =  epsilon_k   + epsilonz_k;
@@ -308,31 +317,35 @@ int main(int argc, const char * argv[]) {
                     sigmaxy0[iMu] += kernel_xy * Ak0*Ak0*Ak0;
                     sigmazz0[iMu] += kernel_zz * Ak0*Ak0;
                     
-                    double norm2dV_k = sqrt( dep_dkx*dep_dkx + dep_dky*dep_dky );
-                    aver_Vk0[iMu] += norm2dV_k * Ak0;
-
-                    if (ep_k*ep_k < 1e-5) {
-                        if (norm2dV_k > max_Vk0[iMu]) {
-                        max_Vk0[iMu] = norm2dV_k;
-                        }
-                        if (norm2dV_k < min_Vk0[iMu]) {
-                        min_Vk0[iMu] = norm2dV_k;
-                        }
-                    }
                     
+                    // double norm2dV_k = sqrt( dep_dkx*dep_dkx + dep_dky*dep_dky );
+                    // aver_Vk0[iMu] += norm2dV_k * Ak0;
+                    // if (ep_k*ep_k < 1e-5) {
+                    //     if (norm2dV_k > max_Vk0[iMu]) {
+                    //     max_Vk0[iMu] = norm2dV_k;
+                    //     }
+                    //     if (norm2dV_k < min_Vk0[iMu]) {
+                    //     min_Vk0[iMu] = norm2dV_k;
+                    //     }
+                    // }
                     
                     //// LOOP ON TEMPERATURES
                     
                     int nn=0; for(nn=0; nn<nT; nn++)
                     {
                         density[iMu][nn]    += 1.0/(1.0+exp(beta[nn]*ep_k));
+
+                        double GammaT = Gamma + ETAaPL*T[nn];
+                               GammaT += M_PI*M_PI*ETAaFL*T[nn]*T[nn];
+                               GammaT += M_PI*M_PI*ETAbFL*T[nn]*T[nn]/(normV_k+10e-10);
                         
-                        double GammaT = Gamma + ETAbFL*T[nn]*T[nn];
 
                         //// INTEGRAL IN ENERGY
                         int n=0; for(n=0; n<nOmega; n++)
                         {
-                            double GammaOmega = GammaT+ETAaFL*omega[nn][n]*omega[nn][n];
+                            double GammaOmega = GammaT;
+                                   GammaOmega += ETAaFL*omega[nn][n]*omega[nn][n];
+                                   GammaOmega += ETAbFL*omega[nn][n]*omega[nn][n]/(normV_k+10e-10);
                             
                             double complex z = omega[nn][n] + GammaOmega * I;
                             double A_k = -(1./M_PI)*cimag(1.0/ (z-ep_k) );
@@ -369,8 +382,9 @@ int main(int argc, const char * argv[]) {
         
 
         //// FILE GROUPED BY T
-        fprintf(fileOut, "           mu            p0           dos ");
-        fprintf(fileOut, "     averageV          minV          maxV ");
+        fprintf(fileOut, "           mu            p0           dos           eta ");
+        // fprintf(fileOut, "        docxx         docxy           eta ");
+        // fprintf(fileOut, "     averageV          minV          maxV ");
         fprintf(fileOut, "     sigmaxx0      sigmaxy0      sigmazz0 ");
         fprintf(fileOut, "            T             p            Cv ");
         fprintf(fileOut, "      sigmaxx       sigmaxy       sigmazz ");
@@ -382,10 +396,10 @@ int main(int argc, const char * argv[]) {
         {
             double f = (2.*energyCutoff[nn]) /(nOmega)*f0;
             
-            fprintf(fileOut,"% 13f % 13f % 13f ", mu, 1.0-f0*density0[iMu], f0*dos[iMu]);
-            fprintf(fileOut,"% 13f % 13f % 13f ", aver_Vk0[iMu]/dos[iMu], min_Vk0[iMu], max_Vk0[iMu]);
+            fprintf(fileOut,"% 13f % 13f % 13f % 13f ", mu, 1.0-f0*density0[iMu], f0*dos[iMu], etaNorm);
+            // fprintf(fileOut,"% 13f % 13f % 13f ", f0*docxx[iMu], f0*docxy[iMu], etaNorm);
+            // fprintf(fileOut,"% 13f % 13f % 13f ", aver_Vk0[iMu]/dos[iMu], min_Vk0[iMu], max_Vk0[iMu]);
             fprintf(fileOut,"% 13f % 13f % 13f ", f0*sigmaxx0[iMu], f0*sigmaxy0[iMu], f0*sigmazz0[iMu]);
-            
             fprintf(fileOut,"% 13f % 13f % 13f ", T[nn], 1.0-f0*density[iMu][nn], f*Cv[iMu][nn]);
             fprintf(fileOut,"% 13f % 13f % 13f ", f*sigma_xx[iMu][nn], f*sigma_xy[iMu][nn], f*sigma_zz[iMu][nn] );
             fprintf(fileOut,"% 13f % 13f % 13f ", f*alpha_xx[iMu][nn], f*alpha_xy[iMu][nn], f*alpha_zz[iMu][nn] );
@@ -414,8 +428,9 @@ int main(int argc, const char * argv[]) {
         double f = (2.*energyCutoff[nn])/(nOmega)*f0;
         
         
-        fprintf(fileOutMu, "           mu            p0           dos ");
-        fprintf(fileOutMu, "     averageV          maxV          minV ");
+        fprintf(fileOutMu, "           mu            p0           dos           eta ");
+        // fprintf(fileOutMu, "        docxx         docxy           eta ");
+        // fprintf(fileOutMu, "     averageV          maxV          minV ");
         fprintf(fileOutMu, "     sigmaxx0      sigmaxy0      sigmazz0 ");
         fprintf(fileOutMu, "            T             p            Cv ");
         fprintf(fileOutMu, "      sigmaxx       sigmaxy       sigmazz ");
@@ -426,8 +441,9 @@ int main(int argc, const char * argv[]) {
         {
             double mu = muMin + iMu*(muMax-muMin)/(nMu-1);
         
-            fprintf(fileOutMu,"% 13f % 13f % 13f ", mu, 1.0-f0*density0[iMu], f0*dos[iMu]);
-            fprintf(fileOutMu,"% 13f % 13f % 13f ", aver_Vk0[iMu]/dos[iMu], min_Vk0[iMu], max_Vk0[iMu]);
+            fprintf(fileOut,"% 13f % 13f % 13f % 13f ", mu, 1.0-f0*density0[iMu], f0*dos[iMu], etaNorm);
+            // fprintf(fileOut,"% 13f % 13f % 13f ", f0*docxx[iMu], f0*docxy[iMu], etaNorm);
+            // fprintf(fileOutMu,"% 13f % 13f % 13f ", aver_Vk0[iMu]/dos[iMu], min_Vk0[iMu], max_Vk0[iMu]);
             fprintf(fileOutMu,"% 13f % 13f % 13f ", f0*sigmaxx0[iMu], f0*sigmaxy0[iMu], f0*sigmazz0[iMu]);
             fprintf(fileOutMu,"% 13f % 13f % 13f ", T[nn], 1.0-f0*density[iMu][nn], f*Cv[iMu][nn]);
             fprintf(fileOutMu,"% 13f % 13f % 13f ", f*sigma_xx[iMu][nn], f*sigma_xy[iMu][nn], f*sigma_zz[iMu][nn] );
@@ -442,8 +458,4 @@ int main(int argc, const char * argv[]) {
     printf("\n transportBuddy over.\n");
     return 0;
 }
-
-
-
-
 

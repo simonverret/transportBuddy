@@ -1,7 +1,7 @@
 OPTIONS = -O2 -Wall
 EXEC = tbd
 INSTALLDIR := $(HOME)/bin/
-#COMPILER = gcc
+# COMPILER = gcc
 COMPILER = /Users/Simon/codes/faster_clang
 
 all: executable
