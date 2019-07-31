@@ -94,8 +94,7 @@ int main(int argc, const char * argv[]) {
     
     double etaNorm=0;
     
-    //// SETTING PARAMETERS
-    
+    //// READING PARAMETERS FROM "model.dat" FILE
     
     char model[800] = "";
     if (argc >= 2) { strcpy(model,argv[1]);}
@@ -139,23 +138,24 @@ int main(int argc, const char * argv[]) {
     
     fclose(file);
     
-    
 
-    
     //// COMPUTING
-    
 
     printf("transportBuddy starting\n\n");
-    
 
     char nameFileT[800] = "transport_vs_T";
     strcat(nameFileT, model);
     FILE *fileOut = fopen(nameFileT,"w");
+
+    //// PRE-CALCULATE TEMPERATURE AND FERMI DISTRIBUTIONS
+    double T[nT];
+    double beta[nT];
+    double omega[nT][nOmega];
+    double energyCutoff[nT];
+    double dfermiDirac_dw[nT][nOmega];
+    double dfermiDirac_dT[nT][nOmega];
     
-    //// PRE-CALCULATE TEMPERATURE VARIABLES
-    double T[nT]; double beta[nT]; double omega[nT][nOmega];
-    double energyCutoff[nT]; double dfermiDirac_dw[nT][nOmega]; double dfermiDirac_dT[nT][nOmega];
-    
+    // loop on temperature for precalculation only
     int nn=0; for(nn=0; nn<nT; nn++) {
         T[nn] = Tmin;
         if ((Tmin != Tmax) && (nT != 1)) {
@@ -175,8 +175,14 @@ int main(int argc, const char * argv[]) {
     }
     
     //// PRE-CALCULATE SINES AND COSINES
-    double sink[nK]; double sin2k[nK];  double sink_2[nK];
-    double cosk[nK]; double cos2k[nK];  double cosk_2[nK];
+    double sink[nK];
+    double sin2k[nK];
+    double sink_2[nK];
+    double cosk[nK];
+    double cos2k[nK];
+    double cosk_2[nK];
+
+    // loop on k for precalculation only
     int ii=0; for(ii=0; ii<nK; ii++){
         double k = M_PI*(ii*1.0/nK);
         sink[ii] = sin(k); sin2k[ii] = sin(2.*k); sink_2[ii] = sin(k/2.);
@@ -189,7 +195,7 @@ int main(int argc, const char * argv[]) {
     }
     
     
-    //// RESULTS RECORDER
+    //// RESULTS TO FILL
     double dos[nMu];
     double docxx[nMu];
     double docxy[nMu];
@@ -197,7 +203,7 @@ int main(int argc, const char * argv[]) {
     double sigmaxx0[nMu];
     double sigmazz0[nMu];
     double sigmaxy0[nMu];
-    // double aver_Vk0[nMu];
+    // double aver_Vk0[nMu]; // this was to compute the average velocity
     // double max_Vk0[nMu];
     // double min_Vk0[nMu];
     double Cv[nMu][nT];
@@ -212,13 +218,13 @@ int main(int argc, const char * argv[]) {
     double beta_zz[nMu][nT];
     double beta_xy[nMu][nT];
     
-    //// LOOP ON mu
+    //// LOOP ON mu (chemical potential)
     for(int iMu=0; iMu<nMu; iMu++)
     {
         double mu = muMin;
         if (muMin!=muMax) mu += iMu*(muMax-muMin)/(nMu-1);
         
-        //// RESULTS
+        //// INITIALIZE RESULTS TO 0
         dos[iMu] = 0.;
         docxx[iMu] = 0.;
         docxy[iMu] = 0.;
@@ -229,6 +235,8 @@ int main(int argc, const char * argv[]) {
         // aver_Vk0[iMu]=0.;
         // max_Vk0[iMu]=0.;
         // min_Vk0[iMu]=1000.;
+
+        /// INITIALIZE RESULTS vs TEMPERATURE TO 0
         int nn=0; for(nn=0; nn<nT; nn++)
         {
             Cv[iMu][nn]=0.;
@@ -310,14 +318,14 @@ int main(int argc, const char * argv[]) {
                     double kernel_zz = dep_dkz*dep_dkz;
                     double kernel_xy = -(2./3.)*(dep_dkx * (dep_dkx * dep_dky_dky - dep_dky * dep_dkx_dky));
                     
-                    
+                    //// T-INDEPENDENT RESULTS:
                     dos[iMu]      += Ak0;
                     density0[iMu] += 1.0/(1.0+exp(1000*ep_k));
                     sigmaxx0[iMu] += kernel_xx * Ak0*Ak0;
                     sigmaxy0[iMu] += kernel_xy * Ak0*Ak0*Ak0;
                     sigmazz0[iMu] += kernel_zz * Ak0*Ak0;
                     
-                    
+                    // VELOCITY AVERAGE (commented because it is not really a good quantity to study)
                     // double norm2dV_k = sqrt( dep_dkx*dep_dkx + dep_dky*dep_dky );
                     // aver_Vk0[iMu] += norm2dV_k * Ak0;
                     // if (ep_k*ep_k < 1e-5) {
@@ -329,8 +337,7 @@ int main(int argc, const char * argv[]) {
                     //     }
                     // }
                     
-                    //// LOOP ON TEMPERATURES
-                    
+                    //// LOOP ON TEMPERATURES (T-DEPENDENT RESULTS)
                     int nn=0; for(nn=0; nn<nT; nn++)
                     {
                         density[iMu][nn]    += 1.0/(1.0+exp(beta[nn]*ep_k));
@@ -338,7 +345,6 @@ int main(int argc, const char * argv[]) {
                         double GammaT = Gamma + ETAaPL*T[nn];
                                GammaT += M_PI*M_PI*ETAaFL*T[nn]*T[nn];
                                GammaT += M_PI*M_PI*ETAbFL*T[nn]*T[nn]/(normV_k+10e-10);
-                        
 
                         //// INTEGRAL IN ENERGY
                         int n=0; for(n=0; n<nOmega; n++)

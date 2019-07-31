@@ -1,11 +1,9 @@
 OPTIONS = -O2 -Wall
 EXEC = tbd
 INSTALLDIR := $(HOME)/bin/
-# COMPILER = gcc
-COMPILER = /Users/Simon/codes/faster_clang
+COMPILER = gcc
 
-all: executable
-executable: transportBuddy.c
-	$(COMPILER) $(OPTIONS) -o $(EXEC) transportBuddy.c -llapack -lblas -lstdc++ -lm
+all: src/transportBuddy.c
+	$(COMPILER) $(OPTIONS) -o $(EXEC) src/transportBuddy.c
 install : all
 	cp $(EXEC) $(INSTALLDIR)

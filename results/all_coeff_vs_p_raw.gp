@@ -1,6 +1,6 @@
 w = 800
 h = 600
-set term wxt font "Arial,16" persist size w,h
+set term qt font "Arial,16" persist size w,h
 bind "w" "unset output; exit gnuplot"
 
 set title '' #"$t=0.190$ eV, $\\hbar/\\tau=t/25$, $t_z=-0.07t$"
