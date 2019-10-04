@@ -287,7 +287,7 @@ int main(int argc, const char * argv[]) {
                 double cos_phi = 0.0;
                 double cos_phi12 = 0.0;
                 if (ii > 0 & jj > 0 & ETAk > 0) {
-                    cos_phi = cos(atan(jj/ii));
+                    cos_phi = cos(atan(2*jj/ii));
                     cos_phi12 = pow(cos_phi,12);
                 }
 
