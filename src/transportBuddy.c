@@ -81,6 +81,7 @@ int main(int argc, const char * argv[]) {
     double ETA=0.00001;
     double ETAell=0.0;
     double ETAdos=0.0;
+    double ETAk=0.0;
     double ETAaFL=0.0;
     double ETAbFL=0.0;
     double ETAaPL=0.0;
@@ -121,6 +122,8 @@ int main(int argc, const char * argv[]) {
     if (ETAell>etaNorm) etaNorm=ETAell;
     readDouble(file, "ETAdos",          &ETAdos);
     if (ETAdos>etaNorm) etaNorm=ETAdos;
+    readDouble(file, "ETAk",          &ETAk);
+    if (ETAk>etaNorm) etaNorm=ETAk;
     readDouble(file, "ETAaFL",          &ETAaFL);
     // if (ETAaFL>etaNorm) etaNorm=ETAaFL*Tmin*Tmin;
     readDouble(file, "ETAbFL",          &ETAbFL);
@@ -281,6 +284,17 @@ int main(int argc, const char * argv[]) {
                 depsilon_dky_dky  +=  8.*tpp  *  cos2k[jj];
                 depsilon_dky_dky  +=     tppp * (16.*cos2k[jj]*cosk[ii] + 8.*cosk[jj]*cos2k[ii]);
                 
+                double cos_phi = 0.0;
+                double cos_phi12 = 0.0;
+                if (ii > 0 & jj > 0 & ETAk > 0) {
+                    cos_phi = cos(atan(jj/ii));
+                    cos_phi12 = pow(cos_phi,12);
+                }
+
+                //// TODO:
+                //// AF RECONSTRUCTION IN THE PLANES
+                //// like in transport Buddy
+                
                 for(int kk=0; kk<nKz; kk++) {
                     
                     double epsilonz_k         = -2.*tz*coskz[kk];
@@ -308,10 +322,9 @@ int main(int argc, const char * argv[]) {
                     
                     double Gamma = ETA;
                     double normV_k = sqrt(dep_dkx*dep_dkx + dep_dky*dep_dky + dep_dkz*dep_dkz);
-                    
                     Gamma += ETAell*normV_k;
                     Gamma += ETAdos/(normV_k+10e-10);
-                    
+                    Gamma += ETAk*cos_phi12;
                     //// A
                     double Ak0   = -(1./M_PI)*cimag(1.0/ (I*Gamma - ep_k));
                     double kernel_xx = dep_dkx*dep_dkx;
