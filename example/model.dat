@@ -2,8 +2,8 @@ t      1.0
 tp     -0.14
 tpp    0.07
 tppp   0.00
-tz     0.0
-M      0.01
+tz     0.07
+M      0.2
 
 # muMin -2.5
 # muMax  3.5
@@ -25,7 +25,7 @@ ETAaFL 0.0
 ETAbFL 0.0
 ETAaPL 0.0
 ETAk   0.0
-nK     401
-nKz    1
-nOmega 11
+nK     601
+nKz    41
+nOmega 31
 amplitudeCutoff 0.005

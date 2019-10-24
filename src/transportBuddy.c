@@ -638,24 +638,24 @@ int main(int argc, const char * argv[]) {
         
 
         //// FILE GROUPED BY T
-        fprintf(fileOut, "mu\tp0\tdos\teta\t");
+        fprintf(fileOut, "mu\tn0\tp0\tdos\teta\t");
         fprintf(fileOut, "sigmaxx0\tsigmaxy0\tsigmazz0\t");
-        fprintf(fileOut, "T\tp\tCv\t");
+        fprintf(fileOut, "T\tn\tp\tCv\t");
         fprintf(fileOut, "sigmaxx\tsigmaxy\tsigmazz\t");
         fprintf(fileOut, "alphaxx\talphaxy\talphazz\t");
         fprintf(fileOut, "betaxx\tbetaxy\tbetazz\t");
 
         if (M>M_treshold) {
-            fprintf(fileOut, "dos1\t");
+            fprintf(fileOut, "n1_0\tdos1\t");
             fprintf(fileOut, "sigmaxx1_0\tsigmaxy1_0\tsigmazz1_0\t");
-            fprintf(fileOut, "Cv_1\t");
+            fprintf(fileOut, "n1\tCv_1\t");
             fprintf(fileOut, "sigmaxx1\tsigmaxy1\tsigmazz1\t");
             fprintf(fileOut, "alphaxx1\talphaxy1\talphazz1\t");
             fprintf(fileOut, "betaxx1\tbetaxy1\tbetazz1\t");
 
-            fprintf(fileOut, "dos2\t");
+            fprintf(fileOut, "n2_0\tdos2\t");
             fprintf(fileOut, "sigmaxx2_0\tsigmaxy2_0\tsigmazz2_0\t");
-            fprintf(fileOut, "Cv_2\t");
+            fprintf(fileOut, "n2\tCv_2\t");
             fprintf(fileOut, "sigmaxx2\tsigmaxy2\tsigmazz2\t");
             fprintf(fileOut, "alphaxx2\talphaxy2\talphazz2\t");
             fprintf(fileOut, "betaxx2\tbetaxy2\tbetazz2\t");
@@ -668,25 +668,25 @@ int main(int argc, const char * argv[]) {
             double f = (2.*energyCutoff[nn]) /(nOmega)*f_0;
             double fAF = (energyCutoff[nn]) /(nOmega)*f_0;
             
-            fprintf(fileOut,"%e\t%e\t%e\t%e\t", mu, 1.0-f_0*density_0[iMu], f_0*dos[iMu], etaNorm);
+            fprintf(fileOut,"%e\t%e\t%e\t%e\t%e\t", mu, f_0*density_0[iMu], 1.0-f_0*density_0[iMu], f_0*dos[iMu], etaNorm);
             fprintf(fileOut,"%e\t%e\t%e\t", f_0*sigmaxx_0[iMu], f_0*sigmaxy_0[iMu], f_0*sigmazz_0[iMu]);
-            fprintf(fileOut,"%e\t%e\t%e\t", T[nn], 1.0-f_0*density[iMu][nn], f*Cv[iMu][nn]);
+            fprintf(fileOut,"%e\t%e\t%e\t%e\t", T[nn],f_0*density[iMu][nn], 1.0-f_0*density[iMu][nn], f*Cv[iMu][nn]);
             fprintf(fileOut,"%e\t%e\t%e\t", f*sigma_xx[iMu][nn], f*sigma_xy[iMu][nn], f*sigma_zz[iMu][nn] );
             fprintf(fileOut,"%e\t%e\t%e\t", f*alpha_xx[iMu][nn], f*alpha_xy[iMu][nn], f*alpha_zz[iMu][nn] );
             fprintf(fileOut,"%e\t%e\t%e\t", f*beta_xx[iMu][nn],  f*beta_xy[iMu][nn],  f*beta_zz[iMu][nn] );
 
             if (M>M_treshold) {
 
-                fprintf(fileOut,"%e\t", fAF_0*dos1[iMu]);
+                fprintf(fileOut,"%e\t%e\t", f_0*density1_0[iMu], fAF_0*dos1[iMu]);
                 fprintf(fileOut,"%e\t%e\t%e\t", fAF_0*sigmaxx1_0[iMu], fAF_0*sigmaxy1_0[iMu], fAF_0*sigmazz1_0[iMu]);
-                fprintf(fileOut,"%e\t", f*Cv1[iMu][nn]);
+                fprintf(fileOut,"%e\t%e\t", f_0*density1[iMu][nn],f*Cv1[iMu][nn]);
                 fprintf(fileOut,"%e\t%e\t%e\t", fAF*sigma1_xx[iMu][nn], fAF*sigma1_xy[iMu][nn], fAF*sigma1_zz[iMu][nn] );
                 fprintf(fileOut,"%e\t%e\t%e\t", fAF*alpha1_xx[iMu][nn], fAF*alpha1_xy[iMu][nn], fAF*alpha1_zz[iMu][nn] );
                 fprintf(fileOut,"%e\t%e\t%e\t", fAF*beta1_xx[iMu][nn],  fAF*beta1_xy[iMu][nn],  fAF*beta1_zz[iMu][nn] );
 
-                fprintf(fileOut,"%e\t", fAF_0*dos2[iMu]);
+                fprintf(fileOut,"%e\t%e\t", f_0*density1_0[iMu],fAF_0*dos2[iMu]);
                 fprintf(fileOut,"%e\t%e\t%e\t", fAF_0*sigmaxx2_0[iMu], fAF_0*sigmaxy2_0[iMu], fAF_0*sigmazz2_0[iMu]);
-                fprintf(fileOut,"%e\t", f*Cv2[iMu][nn]);
+                fprintf(fileOut,"%e\t%e\t", f_0*density1[iMu][nn],f*Cv2[iMu][nn]);
                 fprintf(fileOut,"%e\t%e\t%e\t", fAF*sigma2_xx[iMu][nn], fAF*sigma2_xy[iMu][nn], fAF*sigma2_zz[iMu][nn] );
                 fprintf(fileOut,"%e\t%e\t%e\t", fAF*alpha2_xx[iMu][nn], fAF*alpha2_xy[iMu][nn], fAF*alpha2_zz[iMu][nn] );
                 fprintf(fileOut,"%e\t%e\t%e\t", fAF*beta2_xx[iMu][nn],  fAF*beta2_xy[iMu][nn],  fAF*beta2_zz[iMu][nn] );
@@ -714,55 +714,56 @@ int main(int argc, const char * argv[]) {
         double f = (2.*energyCutoff[nn])/(nOmega)*f_0;
         double fAF = (energyCutoff[nn]) /(nOmega)*f_0;
         
-        fprintf(fileOutMu, "mu\tp0\tdos\teta\t");
+        fprintf(fileOutMu, "mu\tn0\tp0\tdos\teta\t");
         fprintf(fileOutMu, "sigmaxx0\tsigmaxy0\tsigmazz0\t");
-        fprintf(fileOutMu, "T\tp\tCv\t");
+        fprintf(fileOutMu, "T\tn\tp\tCv\t");
         fprintf(fileOutMu, "sigmaxx\tsigmaxy\tsigmazz\t");
         fprintf(fileOutMu, "alphaxx\talphaxy\talphazz\t");
         fprintf(fileOutMu, "betaxx\tbetaxy\tbetazz\t");
-        
-        if (M>M_treshold) {
-            fprintf(fileOut, "dos1\t");
-            fprintf(fileOut, "sigmaxx1_0\tsigmaxy1_0\tsigmazz1_0\t");
-            fprintf(fileOut, "Cv_1\t");
-            fprintf(fileOut, "sigmaxx1\tsigmaxy1\tsigmazz1\t");
-            fprintf(fileOut, "alphaxx1\talphaxy1\talphazz1\t");
-            fprintf(fileOut, "betaxx1\tbetaxy1\tbetazz1\t");
 
-            fprintf(fileOut, "dos2\t");
-            fprintf(fileOut, "sigmaxx2_0\tsigmaxy2_0\tsigmazz2_0\t");
-            fprintf(fileOut, "Cv_2\t");
-            fprintf(fileOut, "sigmaxx2\tsigmaxy2\tsigmazz2\t");
-            fprintf(fileOut, "alphaxx2\talphaxy2\talphazz2\t");
-            fprintf(fileOut, "betaxx2\tbetaxy2\tbetazz2\t");
+        if (M>M_treshold) {
+            fprintf(fileOutMu, "n1_0\tdos1\t");
+            fprintf(fileOutMu, "sigmaxx1_0\tsigmaxy1_0\tsigmazz1_0\t");
+            fprintf(fileOutMu, "n1\tCv_1\t");
+            fprintf(fileOutMu, "sigmaxx1\tsigmaxy1\tsigmazz1\t");
+            fprintf(fileOutMu, "alphaxx1\talphaxy1\talphazz1\t");
+            fprintf(fileOutMu, "betaxx1\tbetaxy1\tbetazz1\t");
+
+            fprintf(fileOutMu, "n2_0\tdos2\t");
+            fprintf(fileOutMu, "sigmaxx2_0\tsigmaxy2_0\tsigmazz2_0\t");
+            fprintf(fileOutMu, "n2\tCv_2\t");
+            fprintf(fileOutMu, "sigmaxx2\tsigmaxy2\tsigmazz2\t");
+            fprintf(fileOutMu, "alphaxx2\talphaxy2\talphazz2\t");
+            fprintf(fileOutMu, "betaxx2\tbetaxy2\tbetazz2\t");
         }
-        fprintf(fileOut, "\n");
+        fprintf(fileOutMu, "\n");
 
         for(int iMu=0; iMu<nMu; iMu++)
         {
             double mu = muMin + iMu*(muMax-muMin)/(nMu-1);
         
-            fprintf(fileOut,"%e\t%e\t%e\t%e\t", mu, 1.0-f_0*density_0[iMu], f_0*dos[iMu], etaNorm);
+            fprintf(fileOutMu,"%e\t%e\t%e\t%e\t%e\t", mu, f_0*density_0[iMu], 1.0-f_0*density_0[iMu], f_0*dos[iMu], etaNorm);
             fprintf(fileOutMu,"%e\t%e\t%e\t", f_0*sigmaxx_0[iMu], f_0*sigmaxy_0[iMu], f_0*sigmazz_0[iMu]);
-            fprintf(fileOutMu,"%e\t%e\t%e\t", T[nn], 1.0-f_0*density[iMu][nn], f*Cv[iMu][nn]);
+            fprintf(fileOutMu,"%e\t%e\t%e\t%e\t", T[nn],f_0*density[iMu][nn], 1.0-f_0*density[iMu][nn], f*Cv[iMu][nn]);
             fprintf(fileOutMu,"%e\t%e\t%e\t", f*sigma_xx[iMu][nn], f*sigma_xy[iMu][nn], f*sigma_zz[iMu][nn] );
             fprintf(fileOutMu,"%e\t%e\t%e\t", f*alpha_xx[iMu][nn], f*alpha_xy[iMu][nn], f*alpha_zz[iMu][nn] );
             fprintf(fileOutMu,"%e\t%e\t%e\t", f*beta_xx[iMu][nn],  f*beta_xy[iMu][nn],  f*beta_zz[iMu][nn] );
 
             if (M>M_treshold) {
-                fprintf(fileOut,"%e\t", fAF_0*dos1[iMu]);
-                fprintf(fileOut,"%e\t%e\t%e\t", fAF_0*sigmaxx1_0[iMu], fAF_0*sigmaxy1_0[iMu], fAF_0*sigmazz1_0[iMu]);
-                fprintf(fileOut,"%e\t", f*Cv1[iMu][nn]);
-                fprintf(fileOut,"%e\t%e\t%e\t", fAF*sigma1_xx[iMu][nn], fAF*sigma1_xy[iMu][nn], fAF*sigma1_zz[iMu][nn] );
-                fprintf(fileOut,"%e\t%e\t%e\t", fAF*alpha1_xx[iMu][nn], fAF*alpha1_xy[iMu][nn], fAF*alpha1_zz[iMu][nn] );
-                fprintf(fileOut,"%e\t%e\t%e\t", fAF*beta1_xx[iMu][nn],  fAF*beta1_xy[iMu][nn],  fAF*beta1_zz[iMu][nn] );
 
-                fprintf(fileOut,"%e\t", fAF_0*dos2[iMu]);
-                fprintf(fileOut,"%e\t%e\t%e\t", fAF_0*sigmaxx2_0[iMu], fAF_0*sigmaxy2_0[iMu], fAF_0*sigmazz2_0[iMu]);
-                fprintf(fileOut,"%e\t", f*Cv2[iMu][nn]);
-                fprintf(fileOut,"%e\t%e\t%e\t", fAF*sigma2_xx[iMu][nn], fAF*sigma2_xy[iMu][nn], fAF*sigma2_zz[iMu][nn] );
-                fprintf(fileOut,"%e\t%e\t%e\t", fAF*alpha2_xx[iMu][nn], fAF*alpha2_xy[iMu][nn], fAF*alpha2_zz[iMu][nn] );
-                fprintf(fileOut,"%e\t%e\t%e\t", fAF*beta2_xx[iMu][nn],  fAF*beta2_xy[iMu][nn],  fAF*beta2_zz[iMu][nn] );
+                fprintf(fileOutMu,"%e\t%e\t", f_0*density1_0[iMu], fAF_0*dos1[iMu]);
+                fprintf(fileOutMu,"%e\t%e\t%e\t", fAF_0*sigmaxx1_0[iMu], fAF_0*sigmaxy1_0[iMu], fAF_0*sigmazz1_0[iMu]);
+                fprintf(fileOutMu,"%e\t%e\t", f_0*density1[iMu][nn],f*Cv1[iMu][nn]);
+                fprintf(fileOutMu,"%e\t%e\t%e\t", fAF*sigma1_xx[iMu][nn], fAF*sigma1_xy[iMu][nn], fAF*sigma1_zz[iMu][nn] );
+                fprintf(fileOutMu,"%e\t%e\t%e\t", fAF*alpha1_xx[iMu][nn], fAF*alpha1_xy[iMu][nn], fAF*alpha1_zz[iMu][nn] );
+                fprintf(fileOutMu,"%e\t%e\t%e\t", fAF*beta1_xx[iMu][nn],  fAF*beta1_xy[iMu][nn],  fAF*beta1_zz[iMu][nn] );
+
+                fprintf(fileOutMu,"%e\t%e\t", f_0*density1_0[iMu],fAF_0*dos2[iMu]);
+                fprintf(fileOutMu,"%e\t%e\t%e\t", fAF_0*sigmaxx2_0[iMu], fAF_0*sigmaxy2_0[iMu], fAF_0*sigmazz2_0[iMu]);
+                fprintf(fileOutMu,"%e\t%e\t", f_0*density1[iMu][nn],f*Cv2[iMu][nn]);
+                fprintf(fileOutMu,"%e\t%e\t%e\t", fAF*sigma2_xx[iMu][nn], fAF*sigma2_xy[iMu][nn], fAF*sigma2_zz[iMu][nn] );
+                fprintf(fileOutMu,"%e\t%e\t%e\t", fAF*alpha2_xx[iMu][nn], fAF*alpha2_xy[iMu][nn], fAF*alpha2_zz[iMu][nn] );
+                fprintf(fileOutMu,"%e\t%e\t%e\t", fAF*beta2_xx[iMu][nn],  fAF*beta2_xy[iMu][nn],  fAF*beta2_zz[iMu][nn] );
             }
             fprintf(fileOutMu, "\n");
             
