@@ -36,7 +36,7 @@ The code reads all adjustable parameters of the model from the 'model.dat' file.
 
 For example, the parameters for Nd-LSCO are t=1, tp=-0.14, tpp=0.07, tppp=0, and tz=0.07.
 
-#### Scattering rates contributions (with typical ranges):
+#### Scattering rates contributions, with [typical ranges]:
 - `ETA`    : baseline, should always be non-zero, can be very small : [0.001,0.1]
 - `ETAell` : constant mean-free path, proportional to the velocity : [0,0.1]
 - `ETAdos` : density of states (DOS), proportional to 1/|v_k| : [0,0.1]
@@ -47,20 +47,22 @@ For example, the parameters for Nd-LSCO are t=1, tp=-0.14, tpp=0.07, tppp=0, and
 - `ETAw`   : Linear in frequency, proportional to omega: [0,1]
 - `ETAkw`  : Inverse in frequency, proportional to omega: [0,10] 
 
-#### loop on chemical potential (doping) and temperature
-- `muMin  `: starting chemical potential. Between -6 and 6 
-- `muMax  `: ending chemical potential. Between -6 and 6, larger than muMin
-- `nMu    `: number of chemical potential values. 1 will make muMin the only value considered.
-- `Tmin   `: lowest temperature in units of t. For t=1 referencing 250 meV, T=0.005 is roughly equivalent to 6 K
-- `Tmax   `: highest temperature. For t=1 referencing 250 meV, T=0.1 is roughly equivalent to 300 K
-- `nT     `: number of temerature considered
+WARNING: at the moment there are no safeguards that prevent the scattering to be negative at low energies (because of the linear dependence on omega). This might cause problems at high temperature.
+
+#### loop on chemical potential (doping) and temperature, with [typical ranges]
+- `muMin  `: starting chemical potential [-6,6] 
+- `muMax  `: ending chemical potential [-6,6] larger than muMin
+- `nMu    `: number of chemical potential values. `nMu = 1` will make `muMin` the only value considered.
+- `Tmin   `: lowest temperature in units of t, [0.005,0.1], For t=1 referencing 250 meV, T=0.005 is roughly equivalent to 6 K
+- `Tmax   `: highest temperature, [0.005,0.1], For t=1 referencing 250 meV, T=0.1 is roughly equivalent to 300 K
+- `nT     `: number of temerature considered. `nT = 1` will make `Tmin` the only value considered.
 - `logT   `: boolean. 0 will yield equally spaced values of T, 1 will produce equally spaced values on a log scale.
 
-### Riemann Integration parameters (tradeoff between speed and accuracy)
+### Riemann Integration parameters (to tradeoff speed and accuracy)
 - `nK     `: nb of kx and ky considered.  401
 - `nKz    `: nb of kz considered in kz, if tz=0, it will be automatically set to 1
 - `nOmega `: nb of omega values evaluated. Ex: 31
 - `amplitudeCutoff `: The range of the omega integral is different for each temperature. It ends when the value of fermi function derivative reaches this cutoff, suggested value : 0.005.
 
-## Plotting and units
-The Gnuplot plotting scripts provided in the `expected_results` directory contain exemples of how to translate the results obtained with transportBuddy in units that compare to experiments. For example, the `Seebeck_vs_p.gp` file allows to plot the Seebeck coefficient as a function of doping (tested with Gnuplot 5.2 patchlevel 6). However, even without gnuplot, the `.gp` files required all numerical factors to go from the theoretical units used in the code to more usual units used in experiments.
+## Plotting and managing Units
+The Gnuplot scripts provided in the `plotting` and `example` directory contain a few exemples of calculated units to compare results with experiments.
