@@ -1,4 +1,4 @@
-OPTIONS = -O2 -Wall
+OPTIONS = -O3 -Wall -march=native -ffast-math 
 EXEC = tbd
 INSTALLDIR := $(HOME)/bin/
 COMPILER = gcc

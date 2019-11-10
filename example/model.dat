@@ -1,25 +1,29 @@
 t      1.0
-tp     -0.14
+tp    -0.14
 tpp    0.07
-tppp   0.07
-tz     0.0
+tppp   0.0
+tz     0.07
 
-muMin -2.5
-muMax  3.5
-nMu    10
+ETA    0.12
+ETAell 0.0
+ETAdos 0.0
+ETAk   0.52
+ETAaFL 0.0
+ETAbFL 0.0
+ETAaPL 0.0
+ETAw   0.2
+ETAkw  0.0
+
+muMin -6
+muMax  6
+nMu    200
 
 Tmin   0.0005
 Tmax   0.1
-nT     10
+nT     1
 logT   1
 
-ETA    0.05
-ETAell 0.0
-ETAdos 0.01
-ETAaFL 0.1
-ETAbFL 0.0
-ETAaPL 0.3
-nK     401
-nKz    1
-nOmega 31
-amplitudeCutoff 0.005
+nK     301
+nKz    21
+nOmega 21
+amplitudeCutoff 0.001

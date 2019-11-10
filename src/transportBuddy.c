@@ -34,8 +34,7 @@ void readDouble(FILE * file, char * name,  double * value) {
             if (strcmp(tmpstr1,name)==0) { *value = atof(tmpstr2); return;}
         }
     }
-    printf("\ncannot find the %s parameter in 'model.dat'", name);
-    exit(1);
+    printf("\nWARNING: cannot find the %s parameter in 'model.dat'", name);
 }
 
 void readInt(FILE * file, char * name,  int * value) {
@@ -51,8 +50,7 @@ void readInt(FILE * file, char * name,  int * value) {
             if (strcmp(tmpstr1,name)==0) { *value = atoi(tmpstr2); return;}
         }
     }
-    printf("\ncannot find the %s parameter in 'model.dat'", name);
-    exit(1);
+    printf("\nWARNING: cannot find the %s parameter in 'model.dat'", name);
 }
 
 void removeSubstring(char *s,const char *toremove)
@@ -69,22 +67,21 @@ int main(int argc, const char * argv[]) {
     
     
     //// SETTING PARAMETERS
-    
-    
-    int markiewicz = 1; //bool
     double t;
     double tp;
     double tpp;
     double tppp;
     double tz;
     
-    double ETA=0.00001;
+    double ETA=1e-5;
     double ETAell=0.0;
     double ETAdos=0.0;
     double ETAk=0.0;
     double ETAaFL=0.0;
     double ETAbFL=0.0;
     double ETAaPL=0.0;
+    double ETAw=0.0;
+    double ETAkw=0.0;
     int nOmega;
     int nK;
     int nKz;
@@ -122,14 +119,13 @@ int main(int argc, const char * argv[]) {
     if (ETAell>etaNorm) etaNorm=ETAell;
     readDouble(file, "ETAdos",          &ETAdos);
     if (ETAdos>etaNorm) etaNorm=ETAdos;
-    readDouble(file, "ETAk",          &ETAk);
-    if (ETAk>etaNorm) etaNorm=ETAk;
+    readDouble(file, "ETAk",            &ETAk);
+    if (  ETAk>etaNorm) etaNorm=ETAk;
     readDouble(file, "ETAaFL",          &ETAaFL);
-    // if (ETAaFL>etaNorm) etaNorm=ETAaFL*Tmin*Tmin;
     readDouble(file, "ETAbFL",          &ETAbFL);
-    // if (ETAbFL>etaNorm) etaNorm=ETAbFL*Tmin*Tmin;
     readDouble(file, "ETAaPL",          &ETAaPL);
-    // if (ETAaPL>etaNorm) etaNorm=ETAaPL;
+    readDouble(file, "ETAw",          &ETAw);
+    readDouble(file, "ETAkw",          &ETAkw);
     readDouble(file, "amplitudeCutoff", &amplitudeCutoff);
     
     readInt(file, "nMu",    &nMu);
@@ -186,29 +182,25 @@ int main(int argc, const char * argv[]) {
     double cosk_2[nK];
 
     // loop on k for precalculation only
+    // only on 1/4th of the Brillouin zone (assumes fourfold symmetry)
     int ii=0; for(ii=0; ii<nK; ii++){
         double k = M_PI*(ii*1.0/nK);
         sink[ii] = sin(k); sin2k[ii] = sin(2.*k); sink_2[ii] = sin(k/2.);
         cosk[ii] = cos(k); cos2k[ii] = cos(2.*k); cosk_2[ii] = cos(k/2.);
     }
+    //
     double coskz[nKz]; double coskz_2[nKz]; double sinkz_2[nKz];
     int kk=0; for(kk=0; kk<nKz; kk++){
-        double kz = M_PI*(kk*2.0/(nKz)); // 0 to 2Pi assumes parity (period of Markie is 4Pi)
+        double kz = M_PI*(kk*2.0/(nKz)); // 0 to 2Pi assumes parity (periodicity in z is 4Pi because of the tetragonal structure)
         coskz[kk] = cos(kz); coskz_2[kk] = cos(kz/2.); sinkz_2[kk] = sin(kz/2.);
     }
     
-    
     //// RESULTS TO FILL
     double dos[nMu];
-    double docxx[nMu];
-    double docxy[nMu];
-    double density0[nMu];
-    double sigmaxx0[nMu];
-    double sigmazz0[nMu];
-    double sigmaxy0[nMu];
-    // double aver_Vk0[nMu]; // this was to compute the average velocity
-    // double max_Vk0[nMu];
-    // double min_Vk0[nMu];
+    double density_0[nMu];
+    double sigmaxx_0[nMu];
+    double sigmazz_0[nMu];
+    double sigmaxy_0[nMu];
     double Cv[nMu][nT];
     double density[nMu][nT];
     double sigma_xx[nMu][nT];
@@ -229,15 +221,10 @@ int main(int argc, const char * argv[]) {
         
         //// INITIALIZE RESULTS TO 0
         dos[iMu] = 0.;
-        docxx[iMu] = 0.;
-        docxy[iMu] = 0.;
-        density0[iMu] = 0.;
-        sigmaxx0[iMu] = 0.;
-        sigmazz0[iMu] = 0.;
-        sigmaxy0[iMu] = 0.;
-        // aver_Vk0[iMu]=0.;
-        // max_Vk0[iMu]=0.;
-        // min_Vk0[iMu]=1000.;
+        density_0[iMu] = 0.;
+        sigmaxx_0[iMu] = 0.;
+        sigmazz_0[iMu] = 0.;
+        sigmaxy_0[iMu] = 0.;
 
         /// INITIALIZE RESULTS vs TEMPERATURE TO 0
         int nn=0; for(nn=0; nn<nT; nn++)
@@ -284,77 +271,52 @@ int main(int argc, const char * argv[]) {
                 depsilon_dky_dky  +=  8.*tpp  *  cos2k[jj];
                 depsilon_dky_dky  +=     tppp * (16.*cos2k[jj]*cosk[ii] + 8.*cosk[jj]*cos2k[ii]);
                 
-                double cos_phi = 0.0;
+                // This will not work outside the first quadrant of the Brillouin zone
                 double cos_phi12 = 0.0;
-                if (ii > 0 & jj > 0 & ETAk > 0) {
-                    cos_phi = cos(atan(2*jj/ii));
+                if (ii > 0 & jj > 0 & (ETAk > 0 || ETAkw > 0)) {
+                    double cos_phi = cos(atan(2*jj/ii));
                     cos_phi12 = pow(cos_phi,12);
                 }
 
-                //// TODO:
-                //// AF RECONSTRUCTION IN THE PLANES
-                //// like in transport Buddy
-                
                 for(int kk=0; kk<nKz; kk++) {
                     
-                    double epsilonz_k         = -2.*tz*coskz[kk];
-                    double depsilonz_dkx      =  0.;
-                    double depsilonz_dky      =  0.;
-                    double depsilonz_dkx_dky  =  0.;
-                    double depsilonz_dky_dky  =  0.;
-                    double depsilonz_dkz      =  2.*tz*sink[kk];
+                    // See Markiewicz 2005 for the 3D tight-binding model // derivatives from mathematica
+                    double epsilonz_k         = -2*tz*coskz_2[kk]*(cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*cosk_2[ii]*cosk_2[jj];
+                    double depsilonz_dkx      = tz*cosk_2[jj]*(-4-5*cosk[ii]+cosk[jj])*(-cosk[ii]+cosk[jj])*coskz_2[kk]*sink_2[ii];
+                    double depsilonz_dky      = tz*cosk_2[ii]*(-4+cosk[ii]-5*cosk[jj])*(cosk[ii]-cosk[jj])*coskz_2[kk]*sink_2[jj];
+                    double depsilonz_dkx_dky  = tz*(1/4.)*(6-5*cos2k[ii]+16*cosk[jj]+4*cosk[ii]*(4+9*cosk[jj])-5*cos2k[jj])*coskz_2[kk]*sink_2[ii]*sink_2[jj];
+                    double depsilonz_dky_dky  = tz*(1/4.)*cosk_2[ii]*cosk_2[jj]*(10+16*cosk[ii]+cos2k[ii]-4*(4+9*cosk[ii])*cosk[jj]+25*cos2k[jj])*coskz_2[kk];
+                    double depsilonz_dkz      = tz*cosk_2[ii]*cosk_2[jj]*(cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*sinkz_2[kk];
                     
-                    if (markiewicz) { // from mathematica (I'm not that crazy)
-                        epsilonz_k         = -2*tz*coskz_2[kk]*(cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*cosk_2[ii]*cosk_2[jj];
-                        depsilonz_dkx      = tz*cosk_2[jj]*(-4-5*cosk[ii]+cosk[jj])*(-cosk[ii]+cosk[jj])*coskz_2[kk]*sink_2[ii];
-                        depsilonz_dky      = tz*cosk_2[ii]*(-4+cosk[ii]-5*cosk[jj])*(cosk[ii]-cosk[jj])*coskz_2[kk]*sink_2[jj];
-                        depsilonz_dkx_dky  = tz*(1/4.)*(6-5*cos2k[ii]+16*cosk[jj]+4*cosk[ii]*(4+9*cosk[jj])-5*cos2k[jj])*coskz_2[kk]*sink_2[ii]*sink_2[jj];
-                        depsilonz_dky_dky  = tz*(1/4.)*cosk_2[ii]*cosk_2[jj]*(10+16*cosk[ii]+cos2k[ii]-4*(4+9*cosk[ii])*cosk[jj]+25*cos2k[jj])*coskz_2[kk];
-                        depsilonz_dkz      = tz*cosk_2[ii]*cosk_2[jj]*(cosk[ii]-cosk[jj])*(cosk[ii]-cosk[jj])*sinkz_2[kk];
-                    }
-
                     double ep_k        =  epsilon_k   + epsilonz_k;
                     double dep_dkx     = depsilon_dkx + depsilonz_dkx;
                     double dep_dky     = depsilon_dky + depsilonz_dky;
-                    double dep_dkz     = depsilonz_dkz;
                     double dep_dkx_dky = depsilon_dkx_dky + depsilonz_dkx_dky;
                     double dep_dky_dky = depsilon_dky_dky + depsilonz_dky_dky;
+                    double dep_dkz     = depsilonz_dkz;
                     
                     double Gamma = ETA;
                     double normV_k = sqrt(dep_dkx*dep_dkx + dep_dky*dep_dky + dep_dkz*dep_dkz);
                     Gamma += ETAell*normV_k;
                     Gamma += ETAdos/(normV_k+10e-10);
                     Gamma += ETAk*cos_phi12;
-                    //// A
-                    double Ak0   = -(1./M_PI)*cimag(1.0/ (I*Gamma - ep_k));
-                    double kernel_xx = dep_dkx*dep_dkx;
-                    double kernel_zz = dep_dkz*dep_dkz;
-                    double kernel_xy = -(2./3.)*(dep_dkx * (dep_dkx * dep_dky_dky - dep_dky * dep_dkx_dky));
+                    double Ak_0   = -(1./M_PI)*cimag(1.0/ (I*Gamma - ep_k));
+
+                    //// T-INDEPENDENT
+                    double kernel_xx  = dep_dkx*dep_dkx;
+                    double kernel_zz  = dep_dkz*dep_dkz;
+                    double kernel_xy  = -(2./3.)*(dep_dkx * (dep_dkx * dep_dky_dky - dep_dky * dep_dkx_dky));
                     
-                    //// T-INDEPENDENT RESULTS:
-                    dos[iMu]      += Ak0;
-                    density0[iMu] += 1.0/(1.0+exp(1000*ep_k));
-                    sigmaxx0[iMu] += kernel_xx * Ak0*Ak0;
-                    sigmaxy0[iMu] += kernel_xy * Ak0*Ak0*Ak0;
-                    sigmazz0[iMu] += kernel_zz * Ak0*Ak0;
+                    dos[iMu]       += Ak_0;
+                    density_0[iMu] += 1.0/(1.0+exp(1000*ep_k));
+                    sigmaxx_0[iMu] += kernel_xx * Ak_0*Ak_0;
+                    sigmaxy_0[iMu] += kernel_xy * Ak_0*Ak_0*Ak_0;
+                    sigmazz_0[iMu] += kernel_zz * Ak_0*Ak_0;
                     
-                    // VELOCITY AVERAGE (commented because it is not really a good quantity to study)
-                    // double norm2dV_k = sqrt( dep_dkx*dep_dkx + dep_dky*dep_dky );
-                    // aver_Vk0[iMu] += norm2dV_k * Ak0;
-                    // if (ep_k*ep_k < 1e-5) {
-                    //     if (norm2dV_k > max_Vk0[iMu]) {
-                    //     max_Vk0[iMu] = norm2dV_k;
-                    //     }
-                    //     if (norm2dV_k < min_Vk0[iMu]) {
-                    //     min_Vk0[iMu] = norm2dV_k;
-                    //     }
-                    // }
-                    
-                    //// LOOP ON TEMPERATURES (T-DEPENDENT RESULTS)
+                    //// LOOP ON TEMPERATURES
                     int nn=0; for(nn=0; nn<nT; nn++)
                     {
                         density[iMu][nn]    += 1.0/(1.0+exp(beta[nn]*ep_k));
-
                         double GammaT = Gamma + ETAaPL*T[nn];
                                GammaT += M_PI*M_PI*ETAaFL*T[nn]*T[nn];
                                GammaT += M_PI*M_PI*ETAbFL*T[nn]*T[nn]/(normV_k+10e-10);
@@ -365,6 +327,8 @@ int main(int argc, const char * argv[]) {
                             double GammaOmega = GammaT;
                                    GammaOmega += ETAaFL*omega[nn][n]*omega[nn][n];
                                    GammaOmega += ETAbFL*omega[nn][n]*omega[nn][n]/(normV_k+10e-10);
+                                   GammaOmega += ETAw*omega[nn][n];
+                                   GammaOmega += ETAkw*omega[nn][n]*cos_phi12;
                             
                             double complex z = omega[nn][n] + GammaOmega * I;
                             double A_k = -(1./M_PI)*cimag(1.0/ (z-ep_k) );
@@ -393,36 +357,33 @@ int main(int argc, const char * argv[]) {
             }
         }
         
-        double f0 = 2.0/nK/nK/nKz;
-        printf("% 4.8f % 4.8f % 4.8f ", mu, 1.0-f0*density0[iMu], f0*dos[iMu]);
-        printf("% 4.8f % 4.8f % 4.8f ", f0*sigmaxx0[iMu], f0*sigmaxy0[iMu], f0*sigmazz0[iMu]);
+        double f_0 = 2.0/nK/nK/nKz;
+        printf("% 4.8f % 4.8f % 4.8f ", mu, 1.0-f_0*density_0[iMu], f_0*dos[iMu]);
+        printf("% 4.8f % 4.8f % 4.8f ", f_0*sigmaxx_0[iMu], f_0*sigmaxy_0[iMu], f_0*sigmazz_0[iMu]);
         printf("\n");
         fflush(stdout);
-        
 
-        //// FILE GROUPED BY T
-        fprintf(fileOut, "           mu            p0           dos           eta ");
-        // fprintf(fileOut, "        docxx         docxy           eta ");
-        // fprintf(fileOut, "     averageV          minV          maxV ");
-        fprintf(fileOut, "     sigmaxx0      sigmaxy0      sigmazz0 ");
-        fprintf(fileOut, "            T             p            Cv ");
-        fprintf(fileOut, "      sigmaxx       sigmaxy       sigmazz ");
-        fprintf(fileOut, "      alphaxx       alphaxy       alphazz ");
-        fprintf(fileOut, "       betaxx        betaxy        betazz\n");
         
+        //// FILE GROUPED BY T
+        fprintf(fileOut, "mu\tn0\tp0\tdos\teta\t");
+        fprintf(fileOut, "sigmaxx0\tsigmaxy0\tsigmazz0\t");
+        fprintf(fileOut, "T\tn\tp\tCv\t");
+        fprintf(fileOut, "sigmaxx\tsigmaxy\tsigmazz\t");
+        fprintf(fileOut, "alphaxx\talphaxy\talphazz\t");
+        fprintf(fileOut, "betaxx\tbetaxy\tbetazz\t");
+        fprintf(fileOut, "\n");
+
         //// LOOP ON TEMPERATURES
         nn=0; for(nn=0; nn<nT; nn++)
         {
-            double f = (2.*energyCutoff[nn]) /(nOmega)*f0;
-            
-            fprintf(fileOut,"% 13f % 13f % 13f % 13f ", mu, 1.0-f0*density0[iMu], f0*dos[iMu], etaNorm);
-            // fprintf(fileOut,"% 13f % 13f % 13f ", f0*docxx[iMu], f0*docxy[iMu], etaNorm);
-            // fprintf(fileOut,"% 13f % 13f % 13f ", aver_Vk0[iMu]/dos[iMu], min_Vk0[iMu], max_Vk0[iMu]);
-            fprintf(fileOut,"% 13f % 13f % 13f ", f0*sigmaxx0[iMu], f0*sigmaxy0[iMu], f0*sigmazz0[iMu]);
-            fprintf(fileOut,"% 13f % 13f % 13f ", T[nn], 1.0-f0*density[iMu][nn], f*Cv[iMu][nn]);
-            fprintf(fileOut,"% 13f % 13f % 13f ", f*sigma_xx[iMu][nn], f*sigma_xy[iMu][nn], f*sigma_zz[iMu][nn] );
-            fprintf(fileOut,"% 13f % 13f % 13f ", f*alpha_xx[iMu][nn], f*alpha_xy[iMu][nn], f*alpha_zz[iMu][nn] );
-            fprintf(fileOut,"% 13f % 13f % 13f ", f*beta_xx[iMu][nn],  f*beta_xy[iMu][nn],  f*beta_zz[iMu][nn] );
+            double f = (2.*energyCutoff[nn]) /(nOmega)*f_0;
+            fprintf(fileOut,"%e\t%e\t%e\t%e\t%e\t", mu, f_0*density_0[iMu], 1.0-f_0*density_0[iMu], f_0*dos[iMu], etaNorm);
+            fprintf(fileOut,"%e\t%e\t%e\t", f_0*sigmaxx_0[iMu], f_0*sigmaxy_0[iMu], f_0*sigmazz_0[iMu]);
+            fprintf(fileOut,"%e\t%e\t%e\t%e\t", T[nn],f_0*density[iMu][nn], 1.0-f_0*density[iMu][nn], f*Cv[iMu][nn]);
+            fprintf(fileOut,"%e\t%e\t%e\t", f*sigma_xx[iMu][nn], f*sigma_xy[iMu][nn], f*sigma_zz[iMu][nn] );
+            fprintf(fileOut,"%e\t%e\t%e\t", f*alpha_xx[iMu][nn], f*alpha_xy[iMu][nn], f*alpha_zz[iMu][nn] );
+            fprintf(fileOut,"%e\t%e\t%e\t", f*beta_xx[iMu][nn],  f*beta_xy[iMu][nn],  f*beta_zz[iMu][nn] );
+
             fprintf(fileOut, "\n");
         }
         fprintf(fileOut, "\n\n");
@@ -433,8 +394,6 @@ int main(int argc, const char * argv[]) {
     fclose(fileOut);
     
     
-
-
     //// FILE GROUPED BY mu
     char nameFileMu[800] = "transport_vs_Mu";
     strcat(nameFileMu, model);
@@ -443,31 +402,27 @@ int main(int argc, const char * argv[]) {
     nn=0; for(nn=0; nn<nT; nn++)
     {
         
-        double f0 = 2.0/nK/nK/nKz;
-        double f = (2.*energyCutoff[nn])/(nOmega)*f0;
+        double f_0 = 2.0/nK/nK/nKz;
+        double f = (2.*energyCutoff[nn])/(nOmega)*f_0;
         
-        
-        fprintf(fileOutMu, "           mu            p0           dos           eta ");
-        // fprintf(fileOutMu, "        docxx         docxy           eta ");
-        // fprintf(fileOutMu, "     averageV          maxV          minV ");
-        fprintf(fileOutMu, "     sigmaxx0      sigmaxy0      sigmazz0 ");
-        fprintf(fileOutMu, "            T             p            Cv ");
-        fprintf(fileOutMu, "      sigmaxx       sigmaxy       sigmazz ");
-        fprintf(fileOutMu, "      alphaxx       alphaxy       alphazz ");
-        fprintf(fileOutMu, "       betaxx        betaxy        betazz\n");
-        
+        fprintf(fileOutMu, "mu\tn0\tp0\tdos\teta\t");
+        fprintf(fileOutMu, "sigmaxx0\tsigmaxy0\tsigmazz0\t");
+        fprintf(fileOutMu, "T\tn\tp\tCv\t");
+        fprintf(fileOutMu, "sigmaxx\tsigmaxy\tsigmazz\t");
+        fprintf(fileOutMu, "alphaxx\talphaxy\talphazz\t");
+        fprintf(fileOutMu, "betaxx\tbetaxy\tbetazz\t");
+        fprintf(fileOutMu, "\n");
+
         for(int iMu=0; iMu<nMu; iMu++)
         {
             double mu = muMin + iMu*(muMax-muMin)/(nMu-1);
         
-            fprintf(fileOut,"% 13f % 13f % 13f % 13f ", mu, 1.0-f0*density0[iMu], f0*dos[iMu], etaNorm);
-            // fprintf(fileOut,"% 13f % 13f % 13f ", f0*docxx[iMu], f0*docxy[iMu], etaNorm);
-            // fprintf(fileOutMu,"% 13f % 13f % 13f ", aver_Vk0[iMu]/dos[iMu], min_Vk0[iMu], max_Vk0[iMu]);
-            fprintf(fileOutMu,"% 13f % 13f % 13f ", f0*sigmaxx0[iMu], f0*sigmaxy0[iMu], f0*sigmazz0[iMu]);
-            fprintf(fileOutMu,"% 13f % 13f % 13f ", T[nn], 1.0-f0*density[iMu][nn], f*Cv[iMu][nn]);
-            fprintf(fileOutMu,"% 13f % 13f % 13f ", f*sigma_xx[iMu][nn], f*sigma_xy[iMu][nn], f*sigma_zz[iMu][nn] );
-            fprintf(fileOutMu,"% 13f % 13f % 13f ", f*alpha_xx[iMu][nn], f*alpha_xy[iMu][nn], f*alpha_zz[iMu][nn] );
-            fprintf(fileOutMu,"% 13f % 13f % 13f ", f*beta_xx[iMu][nn],  f*beta_xy[iMu][nn],  f*beta_zz[iMu][nn] );
+            fprintf(fileOutMu,"%e\t%e\t%e\t%e\t%e\t", mu, f_0*density_0[iMu], 1.0-f_0*density_0[iMu], f_0*dos[iMu], etaNorm);
+            fprintf(fileOutMu,"%e\t%e\t%e\t", f_0*sigmaxx_0[iMu], f_0*sigmaxy_0[iMu], f_0*sigmazz_0[iMu]);
+            fprintf(fileOutMu,"%e\t%e\t%e\t%e\t", T[nn],f_0*density[iMu][nn], 1.0-f_0*density[iMu][nn], f*Cv[iMu][nn]);
+            fprintf(fileOutMu,"%e\t%e\t%e\t", f*sigma_xx[iMu][nn], f*sigma_xy[iMu][nn], f*sigma_zz[iMu][nn] );
+            fprintf(fileOutMu,"%e\t%e\t%e\t", f*alpha_xx[iMu][nn], f*alpha_xy[iMu][nn], f*alpha_zz[iMu][nn] );
+            fprintf(fileOutMu,"%e\t%e\t%e\t", f*beta_xx[iMu][nn],  f*beta_xy[iMu][nn],  f*beta_zz[iMu][nn] );
             fprintf(fileOutMu, "\n");
         
         }

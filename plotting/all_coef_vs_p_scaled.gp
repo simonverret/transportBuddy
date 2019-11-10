@@ -22,6 +22,7 @@ bxx="(column('betaxx')*column('eta')*2/pi)"
 bxy="(column('betaxy')*column('eta')*column('eta')*4/pi)"
 cv="(column('Cv')/column('T')/pi/pi*3)"
 dos="(column('dos'))"
+
 set ylabel 's, a, b, cv, dos, doc' offset -1,0
 # set yrange [-0.3:0.6]
 # set ytics 1
