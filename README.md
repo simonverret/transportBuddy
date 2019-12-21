@@ -58,7 +58,7 @@ WARNING: at the moment there are no safeguards that prevent the scattering to be
 - `nT     `: number of temerature considered. `nT = 1` will make `Tmin` the only value considered.
 - `logT   `: boolean. 0 will yield equally spaced values of T, 1 will produce equally spaced values on a log scale.
 
-### Riemann Integration parameters (to tradeoff speed and accuracy)
+#### Riemann Integration parameters (to tradeoff speed and accuracy)
 - `nK     `: nb of kx and ky considered.  401
 - `nKz    `: nb of kz considered in kz, if tz=0, it will be automatically set to 1
 - `nOmega `: nb of omega values evaluated. Ex: 31
